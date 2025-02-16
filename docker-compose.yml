@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis
+    container_name: cache
+    restart: always
+    ports:
+      - '6379:6379'
+  db:
+    container_name: postgress
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_MULTIPLE_DATABASES: "postgres,event-driven"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "event-driven"]
+      interval: 2s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./internal/sqlc/schema.sql:/docker-entrypoint-initdb.d

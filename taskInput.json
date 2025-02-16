@@ -1,0 +1,19 @@
+{
+  "event_id": "6129bff3-58d6-47a9-a152-066f572e632b",
+  "payload": {
+    "key": "value"
+  },
+  "event_name": "saga01",
+  "events_names": null,
+  "opts": {
+    "kind": "",
+    "retry": 0,
+    "timout": 0,
+    "max_time_of_process_task": 0,
+    "dead_line": "0001-01-01T00:00:00Z",
+    "queue": "",
+    "unique": 0
+  },
+  "info": null,
+  "created_at": "2025-02-15T20:39:17.63185-03:00"
+}

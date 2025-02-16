@@ -1,0 +1,63 @@
+package broker
+
+import (
+	"context"
+	"encoding/json"
+	"event-driven/types"
+	"github.com/hibiken/asynq"
+	"time"
+)
+
+type PublisherServer struct {
+	client *asynq.Client
+}
+
+func NewProducerServer(addr string) *PublisherServer {
+	client := asynq.NewClient(asynq.RedisClientOpt{Addr: addr})
+
+	return &PublisherServer{client: client}
+}
+
+func (ps PublisherServer) Close() {
+	ps.client.Close()
+}
+
+func (ps PublisherServer) Producer(ctx context.Context, input types.PayloadType) error {
+	inputTask, err := json.Marshal(input.Payload)
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(input.EventName, inputTask)
+	var opts []asynq.Option
+
+	opts = append(opts, asynq.TaskID(input.EventID.String()))
+	opts = append(opts, asynq.MaxRetry(input.Opts.MaxRetry))
+
+	if len(input.Opts.Queue) > 0 {
+		opts = append(opts, asynq.Queue(input.Opts.Queue))
+	}
+
+	if !(input.Opts.Delay == 0) {
+		opts = append(opts, asynq.ProcessIn(input.Opts.Delay))
+	}
+
+	if !(input.Opts.Unique == 0) {
+		opts = append(opts, asynq.Unique(input.Opts.Unique))
+	}
+
+	if !(input.Opts.MaxTimeOfProcessTask == 0) {
+		opts = append(opts, asynq.Deadline(time.Now().Add(input.Opts.MaxTimeOfProcessTask)))
+	}
+
+	if !(input.Opts.DeadLine == time.Time{}) {
+		opts = append(opts, asynq.Deadline(input.Opts.DeadLine))
+	}
+
+	_, err = ps.client.Enqueue(task, opts...)
+	if err != nil { //TODO: add sent the configs
+		return err
+	}
+
+	return nil
+}
