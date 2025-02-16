@@ -1,6 +1,6 @@
 -- name: CreateTransaction :exec
-INSERT INTO transactions (event_id, event_name, opts, payload, status, started_at, info)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+INSERT INTO transactions (id,event_id, event_name, opts, payload, status, started_at, info)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: UpdateTransaction :exec
 UPDATE transactions

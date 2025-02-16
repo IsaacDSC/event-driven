@@ -31,7 +31,7 @@ func (ps PublisherServer) Producer(ctx context.Context, input types.PayloadType)
 	task := asynq.NewTask(input.EventName, inputTask)
 	var opts []asynq.Option
 
-	opts = append(opts, asynq.TaskID(input.EventID.String()))
+	opts = append(opts, asynq.TaskID(input.TransactionID.String()))
 	opts = append(opts, asynq.MaxRetry(input.Opts.MaxRetry))
 
 	if len(input.Opts.Queue) > 0 {

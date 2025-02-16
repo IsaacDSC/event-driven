@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"event-driven/internal/acl"
+	"event-driven/internal/utils"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
@@ -39,13 +40,16 @@ func (p Producer) Producer(ctx context.Context, eventName string, payload any, f
 		return err
 	}
 
+	txID := uuid.New()
+	ctx = utils.SetTxIDToCtx(ctx, txID)
 	input := types.PayloadType{
-		EventID:     uuid.New(),
-		Payload:     inputPayload,
-		EventName:   eventName,
-		EventsNames: nil,     //TODO: not implemented
-		Opts:        opts[0], //TODO: not implemented
-		CreatedAt:   time.Now(),
+		TransactionID: txID,
+		EventID:       uuid.New(),
+		Payload:       inputPayload,
+		EventName:     eventName,
+		EventsNames:   nil,     //TODO: not implemented
+		Opts:          opts[0], //TODO: not implemented
+		CreatedAt:     time.Now(),
 	}
 
 	if err := p.client.CreateMsg(ctx, input); err != nil {

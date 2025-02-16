@@ -3,6 +3,7 @@ package SDK
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"event-driven/internal/acl"
 	"event-driven/internal/utils"
 	"event-driven/types"
@@ -62,6 +63,10 @@ func (cs *ConsumerServer) handler(fn types.ConsumerFn) func(ctx context.Context,
 			return err
 		}
 
+		if txID == uuid.Nil {
+			panic("txID is nil")
+		}
+
 		if err := fn(ctx, txID, input); err != nil {
 			return err
 		}
@@ -86,7 +91,7 @@ func (cs *ConsumerServer) middleware(h asynq.Handler) asynq.Handler {
 		taskID, ok := asynq.GetTaskID(ctx)
 		if !ok {
 			log.Printf("could not get task ID")
-			//taskID = uuid.New().String()
+			return errors.New("could not get task ID")
 		}
 
 		txID, err := uuid.Parse(taskID)

@@ -15,11 +15,12 @@ import (
 )
 
 const createTransaction = `-- name: CreateTransaction :exec
-INSERT INTO transactions (event_id, event_name, opts, payload, status, started_at, info)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO transactions (id,event_id, event_name, opts, payload, status, started_at, info)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type CreateTransactionParams struct {
+	ID        uuid.UUID
 	EventID   uuid.UUID
 	EventName string
 	Opts      json.RawMessage
@@ -31,6 +32,7 @@ type CreateTransactionParams struct {
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) error {
 	_, err := q.db.ExecContext(ctx, createTransaction,
+		arg.ID,
 		arg.EventID,
 		arg.EventName,
 		arg.Opts,

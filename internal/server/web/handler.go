@@ -49,7 +49,12 @@ func (h Handler) postMsg(w http.ResponseWriter, r *http.Request) (err error) {
 	opts, _ := json.Marshal(input.Opts)
 	payload, _ := json.Marshal(input.Payload)
 	info, _ := json.Marshal(input.Info)
+
+	fmt.Println()
+	fmt.Println("transactionID", input.TransactionID)
+	fmt.Println()
 	if err := h.repository.CreateTransaction(r.Context(), genrepo.CreateTransactionParams{
+		ID:        input.TransactionID,
 		EventID:   input.EventID,
 		EventName: input.EventName,
 		Opts:      opts,
