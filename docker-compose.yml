@@ -1,16 +1,16 @@
-version: '3.8'
-
 services:
   redis:
     image: redis
     container_name: cache
     restart: always
+    profiles: [minimal]
     ports:
       - '6379:6379'
   db:
     container_name: postgress
     image: postgres
     restart: always
+    profiles: [minimal]
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
@@ -30,6 +30,7 @@ services:
     image: grafana/grafana-oss
     container_name: grafana
     restart: always
+    profiles: [monitoring]
     ports:
       - "3000:3000"
     depends_on:
@@ -40,6 +41,18 @@ services:
     volumes:
       - grafana-storage:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
+  server:
+    build:
+      context: .
+      target: final
+    profiles: [app]
+    depends_on:
+      - db
+      - redis
+      - grafana
+    ports:
+      - "3333:3333"
 
 volumes:
   grafana-storage:
+
