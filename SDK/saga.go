@@ -3,6 +3,7 @@ package SDK
 import (
 	"context"
 	"event-driven/internal/acl"
+	"event-driven/internal/utils"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
@@ -35,20 +36,25 @@ func NewSagaPattern(consumers []ConsumerInput, options types.Opts, sequencePaylo
 	}
 }
 
-func (sp SagaPattern) Consumer(ctx context.Context, txID uuid.UUID, payload map[string]any) error {
+func (sp SagaPattern) Consumer(ctx context.Context, payload map[string]any) error {
 	committed := 0
 	var hasError bool
 
+	txID, err := utils.GetTxIDFromCtx(ctx)
+	if err != nil {
+		return fmt.Errorf("could not get txID from context with error: %v", err)
+	}
+
 	for _, c := range sp.Consumers {
 		if err := sp.client.CreateMsg(ctx, types.PayloadType{
-			TransactionID: txID,
-			EventID:       uuid.New(),
-			Payload:       payload,
-			EventName:     c.GetEventName(),
-			Opts:          c.GetConfig(),
-			CreatedAt:     time.Now(),
+			TransactionEventID: txID,
+			EventID:            uuid.New(),
+			Payload:            payload,
+			EventName:          c.GetEventName(),
+			Opts:               c.GetConfig(),
+			CreatedAt:          time.Now(),
 		}); err != nil {
-			return fmt.Errorf("could not create message with error: %v", err)
+			fmt.Printf("could not create message with error: %v\n", err)
 		}
 
 		if err := sp.executeUpFn(ctx, c.UpFn, payload, sp.Options); err != nil {

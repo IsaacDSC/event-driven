@@ -17,16 +17,15 @@ type Opts struct {
 	Unique               time.Duration `json:"unique"`
 }
 
-// Payload
 type PayloadType struct {
-	TransactionID uuid.UUID      `json:"transaction_id"`
-	EventID       uuid.UUID      `json:"event_id"`
-	Payload       map[string]any `json:"payload"`
-	EventName     string         `json:"event_name"`
-	EventsNames   []string       `json:"events_names"`
-	Opts          Opts           `json:"opts"`
-	Info          map[string]any `json:"info"`
-	CreatedAt     time.Time      `json:"created_at"`
+	TransactionEventID uuid.UUID      `json:"transaction_event_id"`
+	EventID            uuid.UUID      `json:"event_id"`
+	Payload            map[string]any `json:"payload"`
+	EventName          string         `json:"event_name"`
+	EventsNames        []string       `json:"events_names"`
+	Opts               Opts           `json:"opts"`
+	Info               map[string]any `json:"info"`
+	CreatedAt          time.Time      `json:"created_at"`
 }
 
 type UpdatePayloadInput struct {
@@ -40,4 +39,4 @@ type UpdatePayloadInput struct {
 type ProducerFn func(ctx context.Context) error
 
 // consumer
-type ConsumerFn func(ctx context.Context, txID uuid.UUID, payload map[string]any) error
+type ConsumerFn func(ctx context.Context, payload map[string]any) error

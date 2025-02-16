@@ -40,16 +40,15 @@ func (p Producer) Producer(ctx context.Context, eventName string, payload any, f
 		return err
 	}
 
-	txID := uuid.New()
-	ctx = utils.SetTxIDToCtx(ctx, txID)
+	eventID := uuid.New()
+	ctx = utils.SetTxIDToCtx(ctx, eventID)
 	input := types.PayloadType{
-		TransactionID: txID,
-		EventID:       uuid.New(),
-		Payload:       inputPayload,
-		EventName:     eventName,
-		EventsNames:   nil,     //TODO: not implemented
-		Opts:          opts[0], //TODO: not implemented
-		CreatedAt:     time.Now(),
+		EventID:     eventID,
+		Payload:     inputPayload,
+		EventName:   eventName,
+		EventsNames: nil,     //TODO: not implemented
+		Opts:        opts[0], //TODO: not implemented
+		CreatedAt:   time.Now(),
 	}
 
 	if err := p.client.CreateMsg(ctx, input); err != nil {

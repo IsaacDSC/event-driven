@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"event-driven/internal/sqlc"
 	genrepo "event-driven/internal/sqlc/generated/repository"
-	"event-driven/internal/utils"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
@@ -88,12 +87,7 @@ func (ss *SubscriberServer) handler(fn types.ConsumerFn) func(ctx context.Contex
 			return err
 		}
 
-		txID, err := utils.GetTxIDFromCtx(ctx)
-		if err != nil {
-			return err
-		}
-
-		if err := fn(ctx, txID, input); err != nil {
+		if err := fn(ctx, input); err != nil {
 			return err
 		}
 

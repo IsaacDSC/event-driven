@@ -50,11 +50,7 @@ func (h Handler) postMsg(w http.ResponseWriter, r *http.Request) (err error) {
 	payload, _ := json.Marshal(input.Payload)
 	info, _ := json.Marshal(input.Info)
 
-	fmt.Println()
-	fmt.Println("transactionID", input.TransactionID)
-	fmt.Println()
 	if err := h.repository.CreateTransaction(r.Context(), genrepo.CreateTransactionParams{
-		ID:        input.TransactionID,
 		EventID:   input.EventID,
 		EventName: input.EventName,
 		Opts:      opts,
@@ -134,10 +130,15 @@ func (h Handler) postSaga(w http.ResponseWriter, r *http.Request) (err error) {
 	payload, _ := json.Marshal(input.Payload)
 	info, _ := json.Marshal(input.Info)
 
-	fmt.Println("transactionID", input.TransactionID)
+	transaction, err := h.repository.GetTransactionByEventID(r.Context(), input.TransactionEventID)
+	if err != nil {
+		log.Printf("could not get transaction with error: %v\n", err)
+		http.Error(w, fmt.Sprintf("could not get transaction with error: %v", err), http.StatusInternalServerError)
+		return nil
+	}
 
 	if err := h.repository.CreateTxSaga(r.Context(), genrepo.CreateTxSagaParams{
-		TransactionID: input.TransactionID,
+		TransactionID: transaction.ID,
 		EventID:       input.EventID,
 		EventName:     input.EventName,
 		Opts:          opts,
@@ -156,6 +157,7 @@ func (h Handler) postSaga(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	if err := h.pb.Producer(r.Context(), input); err != nil {
+		log.Printf("could not send message with error: %v\n", err)
 		http.Error(w, fmt.Sprintf("could not send message with error: %v", err), http.StatusInternalServerError)
 		return nil
 	}

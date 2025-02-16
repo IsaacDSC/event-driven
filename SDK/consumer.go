@@ -67,7 +67,7 @@ func (cs *ConsumerServer) handler(fn types.ConsumerFn) func(ctx context.Context,
 			panic("txID is nil")
 		}
 
-		if err := fn(ctx, txID, input); err != nil {
+		if err := fn(ctx, input); err != nil {
 			return err
 		}
 

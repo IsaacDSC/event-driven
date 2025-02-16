@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"event-driven/internal/utils"
 	"event-driven/types"
 	"github.com/hibiken/asynq"
 	"time"
@@ -31,7 +32,7 @@ func (ps PublisherServer) Producer(ctx context.Context, input types.PayloadType)
 	task := asynq.NewTask(input.EventName, inputTask)
 	var opts []asynq.Option
 
-	opts = append(opts, asynq.TaskID(input.TransactionID.String()))
+	opts = append(opts, asynq.TaskID(input.EventID.String()))
 	opts = append(opts, asynq.MaxRetry(input.Opts.MaxRetry))
 
 	if len(input.Opts.Queue) > 0 {
@@ -54,7 +55,8 @@ func (ps PublisherServer) Producer(ctx context.Context, input types.PayloadType)
 		opts = append(opts, asynq.Deadline(input.Opts.DeadLine))
 	}
 
-	_, err = ps.client.Enqueue(task, opts...)
+	ctx = utils.SetTxIDToCtx(ctx, input.EventID.String())
+	_, err = ps.client.EnqueueContext(ctx, task, opts...)
 	if err != nil { //TODO: add sent the configs
 		return err
 	}
