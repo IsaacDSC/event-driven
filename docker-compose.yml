@@ -14,13 +14,32 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
-      POSTGRES_MULTIPLE_DATABASES: "postgres,event-driven"
+      POSTGRES_DB: "event-driven"
+    volumes:
+      - ./internal/sqlc/schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "event-driven"]
+      test: [ "CMD", "pg_isready", "-q", "-d", "event-driven" ]
       interval: 2s
       timeout: 5s
       retries: 3
+    depends_on:
+      - redis
     ports:
       - "5432:5432"
+  grafana:
+    image: grafana/grafana-oss
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
-      - ./internal/sqlc/schema.sql:/docker-entrypoint-initdb.d
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+
+volumes:
+  grafana-storage:

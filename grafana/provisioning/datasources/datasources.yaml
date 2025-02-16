@@ -1,0 +1,13 @@
+apiVersion: 1
+
+datasources:
+  - name: EventDriven
+    type: postgres
+    access: proxy
+    url: db:5432
+    database: "event-driven"
+    user: root
+    secureJsonData:
+      password: root
+    jsonData:
+      sslmode: disable
