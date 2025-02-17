@@ -45,65 +45,90 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload map[string]any) erro
 		return fmt.Errorf("could not get txID from context with error: %v", err)
 	}
 
+	events := make(map[string]uuid.UUID)
+
 	for _, c := range sp.Consumers {
+		configs := sp.getConfig(sp.Options, c.GetConfig())
+		eventID := uuid.New()
+		events[c.GetEventName()] = eventID
+
 		if err := sp.client.CreateMsg(ctx, types.PayloadType{
 			TransactionEventID: txID,
-			EventID:            uuid.New(),
+			EventID:            eventID,
 			Payload:            payload,
 			EventName:          c.GetEventName(),
-			Opts:               c.GetConfig(),
+			Opts:               configs,
 			CreatedAt:          time.Now(),
 		}); err != nil {
 			fmt.Printf("could not create message with error: %v\n", err)
 		}
 
-		if err := sp.executeUpFn(ctx, c.UpFn, payload, sp.Options); err != nil {
+		if err := sp.executeUpFn(ctx, c.UpFn, payload, sp.Options, 0); err != nil {
 			hasError = true
 			break
 		}
+
+		sp.client.UpdateInfos(ctx, eventID, 0, "COMMITED")
+
 		committed++
 	}
 
 	if hasError {
 		rollbackConsumers := sp.Consumers[:committed+1]
-		// rollback
 		for i := range rollbackConsumers {
-			if err := sp.executeDownFn(ctx, rollbackConsumers[i].DownFn, payload, sp.Options); err != nil {
-				// log error
-				//	TODO: add registry error in database (rollback X with error Y)
+			eventID := events[rollbackConsumers[i].GetEventName()]
+			configs := sp.getConfig(sp.Options, rollbackConsumers[i].GetConfig())
+			if err := sp.executeDownFn(ctx, rollbackConsumers[i].DownFn, payload, sp.Options, 2); err != nil {
+				sp.client.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR")
+				return fmt.Errorf("could not rollback with error: %v", err)
 			}
+			sp.client.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD")
 		}
 	}
 
 	return nil
 }
 
-func (sp SagaPattern) executeUpFn(ctx context.Context, fn Fn, payload any, opts types.Opts) (err error) {
+func (sp SagaPattern) executeUpFn(ctx context.Context, fn Fn, payload any, opts types.Opts, attempt int) (err error) {
 	if opts.MaxRetry == 0 {
 		return fn(ctx, payload, opts)
 	}
 
 	if err = fn(ctx, payload, sp.Options); err != nil {
 		opts.MaxRetry -= 1
+		attempt += 1
+		backoffDuration := time.Duration(attempt*attempt) * time.Second
+		time.Sleep(backoffDuration)
 		//	TODO: add registry error in database (retry X with error Y)
-		sp.executeUpFn(ctx, fn, payload, opts)
+		return sp.executeUpFn(ctx, fn, payload, opts, attempt)
+	}
+
+	return
+}
+
+func (sp SagaPattern) executeDownFn(ctx context.Context, fn Fn, payload any, opts types.Opts, attempt int) (err error) {
+	if opts.MaxRetry == 0 {
+		return fn(ctx, payload, opts)
+	}
+
+	if err = fn(ctx, payload, sp.Options); err != nil {
+		opts.MaxRetry -= 1
+		attempt += 1
+		backoffDuration := time.Duration(attempt*attempt) * time.Second
+		time.Sleep(backoffDuration)
+		//	TODO: add registry error in database (retry X with error Y)
+		return sp.executeDownFn(ctx, fn, payload, opts, attempt)
 
 	}
 
 	return
 }
 
-func (sp SagaPattern) executeDownFn(ctx context.Context, fn Fn, payload any, opts types.Opts) (err error) {
-	if opts.MaxRetry == 0 {
-		return fn(ctx, payload, opts)
+func (sp SagaPattern) getConfig(taskConfig, sagaConfig types.Opts) types.Opts {
+	if sagaConfig == types.EmptyOpts {
+		return taskConfig
 	}
 
-	if err = fn(ctx, payload, sp.Options); err != nil {
-		opts.MaxRetry -= 1
-		//	TODO: add registry error in database (retry X with error Y)
-		sp.executeDownFn(ctx, fn, payload, opts)
+	return sagaConfig
 
-	}
-
-	return
 }

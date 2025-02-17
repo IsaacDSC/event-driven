@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+var EmptyOpts = Opts{}
+
 // Opts
 type Opts struct {
 	Kind                 string        `json:"kind"`
