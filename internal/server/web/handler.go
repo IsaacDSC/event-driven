@@ -176,8 +176,6 @@ func (h Handler) patchSaga(w http.ResponseWriter, r *http.Request) (err error) {
 		return
 	}
 
-	fmt.Println("UPDATE INFOS", eventID)
-
 	defer r.Body.Close()
 	var input types.UpdatePayloadInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -185,7 +183,8 @@ func (h Handler) patchSaga(w http.ResponseWriter, r *http.Request) (err error) {
 		return nil
 	}
 
-	if err := h.repository.UpdateTransaction(r.Context(), genrepo.UpdateTransactionParams{
+	fmt.Println("SAGA UPDATE INFOS", eventID, input.Status)
+	if err := h.repository.UpdateTxSaga(r.Context(), genrepo.UpdateTxSagaParams{
 		EventID: ID,
 		Status:  input.Status,
 		TotalRetry: sql.NullInt32{
