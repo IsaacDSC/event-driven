@@ -29,8 +29,9 @@ func NewClient(baseUrl string) *Client {
 }
 
 func (c Client) UpdateInfos(ctx context.Context, txID uuid.UUID, retry int, status string) {
+	//TODO: review this responsibility
 	var finishedAt time.Time
-	if status == "FINISHED" {
+	if status == "FINISHED" || status == "BACKWARD" || status == "BACKWARD_ERROR" {
 		finishedAt = time.Now()
 	}
 
