@@ -17,12 +17,12 @@ func NewSagaExample2() *SagaExample2 {
 	return &SagaExample2{}
 }
 
-func (s SagaExample2) UpFn(ctx context.Context, payload any, opts ...types.Opts) error {
+func (s SagaExample2) UpFn(ctx context.Context, payload types.PayloadInput) error {
 	fmt.Println("UpFn Saga2 Received:", payload)
 	return errors.New("generic error upfn saga2")
 }
 
-func (s SagaExample2) DownFn(ctx context.Context, payload any, opts ...types.Opts) error {
+func (s SagaExample2) DownFn(ctx context.Context, payload types.PayloadInput) error {
 	fmt.Println("DownFn Saga2 Received:", payload)
 	return nil
 }

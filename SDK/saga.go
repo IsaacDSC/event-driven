@@ -10,11 +10,11 @@ import (
 	"time"
 )
 
-type Fn func(ctx context.Context, payload any, opts ...types.Opts) error
+type Fn func(ctx context.Context, payload types.PayloadInput) error
 
 type ConsumerInput interface {
-	UpFn(ctx context.Context, payload any, opts ...types.Opts) error
-	DownFn(ctx context.Context, payload any, opts ...types.Opts) error
+	UpFn(ctx context.Context, payload types.PayloadInput) error
+	DownFn(ctx context.Context, payload types.PayloadInput) error
 	GetConfig() types.Opts
 	GetEventName() string
 }
@@ -78,7 +78,7 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 		for i := range rollbackConsumers {
 			eventID := events[rollbackConsumers[i].GetEventName()]
 			configs := sp.getConfig(sp.Options, rollbackConsumers[i].GetConfig())
-			if err := sp.executeDownFn(ctx, rollbackConsumers[i].DownFn, payload, sp.Options, 2); err != nil {
+			if err := sp.executeDownFn(ctx, rollbackConsumers[i].DownFn, payload, configs, 2); err != nil {
 				sp.client.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR")
 				return fmt.Errorf("could not rollback with error: %v", err)
 			}
@@ -89,12 +89,12 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 	return nil
 }
 
-func (sp SagaPattern) executeUpFn(ctx context.Context, fn Fn, payload any, opts types.Opts, attempt int) (err error) {
+func (sp SagaPattern) executeUpFn(ctx context.Context, fn Fn, payload types.PayloadInput, opts types.Opts, attempt int) (err error) {
 	if opts.MaxRetry == 0 {
-		return fn(ctx, payload, opts)
+		return fn(ctx, payload)
 	}
 
-	if err = fn(ctx, payload, sp.Options); err != nil {
+	if err = fn(ctx, payload); err != nil {
 		opts.MaxRetry -= 1
 		attempt += 1
 		backoffDuration := time.Duration(attempt*attempt) * time.Second
@@ -106,12 +106,12 @@ func (sp SagaPattern) executeUpFn(ctx context.Context, fn Fn, payload any, opts 
 	return
 }
 
-func (sp SagaPattern) executeDownFn(ctx context.Context, fn Fn, payload any, opts types.Opts, attempt int) (err error) {
+func (sp SagaPattern) executeDownFn(ctx context.Context, fn Fn, payload types.PayloadInput, opts types.Opts, attempt int) (err error) {
 	if opts.MaxRetry == 0 {
-		return fn(ctx, payload, opts)
+		return fn(ctx, payload)
 	}
 
-	if err = fn(ctx, payload, sp.Options); err != nil {
+	if err = fn(ctx, payload); err != nil {
 		opts.MaxRetry -= 1
 		attempt += 1
 		backoffDuration := time.Duration(attempt*attempt) * time.Second
@@ -125,7 +125,7 @@ func (sp SagaPattern) executeDownFn(ctx context.Context, fn Fn, payload any, opt
 }
 
 func (sp SagaPattern) getConfig(taskConfig, sagaConfig types.Opts) types.Opts {
-	if sagaConfig == types.EmptyOpts {
+	if sagaConfig == *types.EmptyOpts {
 		return taskConfig
 	}
 

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var EmptyOpts = Opts{}
+var EmptyOpts = &Opts{}
 
 // Opts
 type Opts struct {
