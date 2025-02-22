@@ -33,8 +33,6 @@ services:
     profiles: [monitoring]
     ports:
       - "3000:3000"
-    depends_on:
-      - db
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
