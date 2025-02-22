@@ -17,6 +17,9 @@ type Client struct {
 	baseUrl    string
 }
 
+// Ensure Client implements ClientInterface
+var _ types.ClientInterface = (*Client)(nil)
+
 func NewClient(baseUrl string) *Client {
 	client := &http.Client{
 		Timeout: 5 * time.Second,

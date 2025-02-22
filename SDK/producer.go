@@ -14,7 +14,7 @@ import (
 type Producer struct {
 	host        string
 	defaultOpts *types.Opts
-	client      *acl.Client
+	client      types.ClientInterface
 }
 
 func NewProducer(host string, defaultOpts *types.Opts) *Producer {
