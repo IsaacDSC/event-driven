@@ -5,7 +5,6 @@ import (
 	"event-driven/SDK"
 	"event-driven/types"
 	"fmt"
-	"github.com/google/uuid"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,15 +27,22 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	consumer := SDK.NewConsumerServer("localhost:6379")
 
-	consumer.AddHandlers(map[string]types.ConsumerFn{
+	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
 		"event_example_01": ConsumerExample01,
-	}).Start()
+	}).Start(); err != nil {
+		panic(err)
+	}
 
 }
 
-func ConsumerExample01(ctx context.Context, txID uuid.UUID, payload map[string]any) error {
+func ConsumerExample01(ctx context.Context, payload types.PayloadInput) error {
 	fmt.Printf("received_payload:: %+v\n", payload)
+	v := make(map[string]any)
+	if err := payload.Parser(&v); err != nil {
+		return err
+	}
 
-	//return fmt.Errorf("default error ")
+	fmt.Println(v)
+
 	return nil
 }

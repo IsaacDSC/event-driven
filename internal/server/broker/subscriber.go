@@ -82,7 +82,7 @@ func (ss *SubscriberServer) middleware(h asynq.Handler) asynq.Handler {
 
 func (ss *SubscriberServer) handler(fn types.ConsumerFn) func(ctx context.Context, t *asynq.Task) error {
 	return func(ctx context.Context, t *asynq.Task) error {
-		var input map[string]any
+		var input types.PayloadInput
 		if err := json.Unmarshal(t.Payload(), &input); err != nil {
 			return err
 		}

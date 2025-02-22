@@ -24,6 +24,10 @@ func (ps PublisherServer) Close() {
 }
 
 func (ps PublisherServer) Producer(ctx context.Context, input types.PayloadType) error {
+	if input.Type != types.EventTypeTask && input.Type != types.EventTypeSaga {
+		return nil
+	}
+
 	inputTask, err := json.Marshal(input.Payload)
 	if err != nil {
 		return err

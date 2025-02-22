@@ -53,7 +53,7 @@ func (cs *ConsumerServer) AddHandlers(consumers map[string]types.ConsumerFn) *Co
 
 func (cs *ConsumerServer) handler(fn types.ConsumerFn) func(ctx context.Context, t *asynq.Task) error {
 	return func(ctx context.Context, t *asynq.Task) error {
-		var input map[string]any
+		var input types.PayloadInput
 		if err := json.Unmarshal(t.Payload(), &input); err != nil {
 			return err
 		}

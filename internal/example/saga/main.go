@@ -17,7 +17,7 @@ func main() {
 	producer := SDK.NewProducer("http://localhost:3333/task", nil)
 
 	ctx := context.Background()
-	if err := producer.Producer(ctx, "event_example_01", map[string]any{"key": "value"}, nil); err != nil {
+	if err := producer.SagaProducer(ctx, "event_example_01", map[string]any{"key": "value"}); err != nil {
 		panic(err)
 	}
 

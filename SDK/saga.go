@@ -36,7 +36,7 @@ func NewSagaPattern(consumers []ConsumerInput, options types.Opts, sequencePaylo
 	}
 }
 
-func (sp SagaPattern) Consumer(ctx context.Context, payload map[string]any) error {
+func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) error {
 	committed := 0
 	var hasError bool
 
