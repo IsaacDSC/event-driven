@@ -26,7 +26,7 @@ func main() {
 	defer db.Close()
 
 	orm := genrepo.New(db)
-	repo := repository.NewSaga(orm)
+	repo := repository.New(orm)
 
 	if err := producer(repo); err != nil {
 		panic(err)
