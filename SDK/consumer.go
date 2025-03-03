@@ -100,12 +100,16 @@ func (cs *ConsumerServer) middleware(h asynq.Handler) asynq.Handler {
 
 		if err := h.ProcessTask(ctx, t); err != nil {
 			retry, _ := asynq.GetRetryCount(ctx)
-			cs.repository.UpdateInfos(ctx, txID, retry, "ERROR")
+			if cs.repository != nil {
+				cs.repository.UpdateInfos(ctx, txID, retry, "ERROR")
+			}
 			return err
 		}
 
 		retry, _ := asynq.GetRetryCount(ctx)
-		cs.repository.UpdateInfos(ctx, txID, retry, "FINISHED")
+		if cs.repository != nil {
+			cs.repository.UpdateInfos(ctx, txID, retry, "FINISHED")
+		}
 
 		log.Printf("Finished processing %q: Elapsed Time = %v", t.Type(), time.Since(start))
 		return nil

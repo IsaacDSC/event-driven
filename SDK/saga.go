@@ -56,27 +56,33 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 		eventID := uuid.New()
 		events[c.GetEventName()] = eventID
 
-		if err := sp.repository.SagaSaveTx(ctx, types.PayloadType{
-			TransactionEventID: txID,
-			EventID:            eventID,
-			Payload:            payload,
-			EventName:          c.GetEventName(),
-			Opts:               configs,
-			CreatedAt:          time.Now(),
-		}); err != nil {
-			fmt.Printf("could not create message with error: %v\n", err)
+		if sp.repository != nil {
+			if err := sp.repository.SagaSaveTx(ctx, types.PayloadType{
+				TransactionEventID: txID,
+				EventID:            eventID,
+				Payload:            payload,
+				EventName:          c.GetEventName(),
+				Opts:               configs,
+				CreatedAt:          time.Now(),
+			}); err != nil {
+				fmt.Printf("could not create message with error: %v\n", err)
+			}
 		}
 
 		payload.EventID = eventID
 		if err := sp.executeUpFn(ctx, c.UpFn, payload, sp.Options, 0); err != nil {
-			sp.repository.SagaUpdateInfos(ctx, payload.EventID, sp.Options.MaxRetry, "COMMITED_ERROR")
+			if sp.repository != nil {
+				sp.repository.SagaUpdateInfos(ctx, payload.EventID, sp.Options.MaxRetry, "COMMITED_ERROR")
+			}
 			fmt.Printf("could not execute upFn with error: %v\n", err)
 			hasError = true
 			break
 		}
 
-		if err := sp.repository.SagaUpdateInfos(ctx, eventID, 0, "COMMITED"); err != nil {
-			fmt.Printf("could not update infos with error: %v\n", err)
+		if sp.repository != nil {
+			if err := sp.repository.SagaUpdateInfos(ctx, eventID, 0, "COMMITED"); err != nil {
+				fmt.Printf("could not update infos with error: %v\n", err)
+			}
 		}
 
 		committed++
@@ -88,13 +94,18 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 			eventID := events[rollbackConsumers[i].GetEventName()]
 			configs := sp.getConfig(sp.Options, rollbackConsumers[i].GetConfig())
 			if err := sp.executeDownFn(ctx, rollbackConsumers[i].DownFn, payload, configs, 2); err != nil {
-				if err := sp.repository.SagaUpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR"); err != nil {
-					fmt.Printf("error on update info: %v\n", err)
+				if sp.repository != nil {
+					if err := sp.repository.SagaUpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR"); err != nil {
+						fmt.Printf("error on update info: %v\n", err)
+					}
 				}
 				return fmt.Errorf("could not rollback with error: %v", err)
 			}
-			if err := sp.repository.SagaUpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD"); err != nil {
-				fmt.Printf("error on update info: %v\n", err)
+
+			if sp.repository != nil {
+				if err := sp.repository.SagaUpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD"); err != nil {
+					fmt.Printf("error on update info: %v\n", err)
+				}
 			}
 		}
 	}

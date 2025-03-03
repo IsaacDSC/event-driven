@@ -64,8 +64,10 @@ func (p Producer) createMsg(ctx context.Context, eventType types.EventType, even
 		Type:        eventType,
 	}
 
-	if err := p.repository.SaveTx(ctx, input); err != nil {
-		return fmt.Errorf("could not create message: %v", err)
+	if p.repository != nil {
+		if err := p.repository.SaveTx(ctx, input); err != nil {
+			return fmt.Errorf("could not create message: %v", err)
+		}
 	}
 
 	if err := p.pb.Producer(ctx, input); err != nil {
