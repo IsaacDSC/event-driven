@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"event-driven/SDK"
+	"event-driven/database"
 	"event-driven/internal/example/saga/ex"
+	genrepo "event-driven/internal/sqlc/generated/repository"
+	"event-driven/repository"
 	"event-driven/types"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,21 +25,26 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	go producerExample()
+	db, err := database.NewConnection(connectionString)
+	if err != nil {
+		log.Fatalf("could not connect to database: %v", err)
+	}
+
+	defer db.Close()
+
+	orm := genrepo.New(db)
+	repo := repository.New(orm)
+
+	go producerExample(repo)
 
 	sg1 := ex.NewSagaExample()
 	sg2 := ex.NewSagaExample2()
 
-	conn := types.Connection{
-		Database:  connectionString,
-		RedisAddr: rdAddr,
-	}
-
 	defaultSettings := types.Opts{MaxRetry: 3}
 
-	sp := SDK.NewSagaPattern(conn, []SDK.ConsumerInput{sg1, sg2}, defaultSettings, false)
+	sp := SDK.NewSagaPattern(rdAddr, repo, []SDK.ConsumerInput{sg1, sg2}, defaultSettings, false)
 
-	consumer := SDK.NewConsumerServer(conn)
+	consumer := SDK.NewConsumerServer(rdAddr, repo)
 
 	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
 		"event_example_01": sp.Consumer,
@@ -45,11 +54,8 @@ func main() {
 
 }
 
-func producerExample() {
-	producer := SDK.NewProducer(types.Connection{
-		Database:  connectionString,
-		RedisAddr: rdAddr,
-	}, types.EmptyOpts)
+func producerExample(repo types.Repository) {
+	producer := SDK.NewProducer(rdAddr, repo, types.EmptyOpts)
 
 	for {
 		ctx := context.Background()

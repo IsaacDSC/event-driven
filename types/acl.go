@@ -9,4 +9,6 @@ import (
 type Repository interface {
 	UpdateInfos(ctx context.Context, txID uuid.UUID, retry int, status string) error
 	SaveTx(ctx context.Context, input PayloadType) error
+	SagaUpdateInfos(ctx context.Context, txID uuid.UUID, retry int, status string) error
+	SagaSaveTx(ctx context.Context, input PayloadType) error
 }

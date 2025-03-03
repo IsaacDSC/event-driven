@@ -19,11 +19,11 @@ type Transaction struct {
 // Ensure Transaction implements Repository
 var _ types.Repository = (*Transaction)(nil)
 
-func NewTransaction(orm *genrepo.Queries) *Transaction {
+func New(orm *genrepo.Queries) *Transaction {
 	return &Transaction{orm: orm}
 }
 
-func (c Transaction) UpdateInfos(ctx context.Context, ID uuid.UUID, retry int, status string) error {
+func (t Transaction) UpdateInfos(ctx context.Context, ID uuid.UUID, retry int, status string) error {
 	//TODO: review this responsibility
 	var finishedAt time.Time
 	if status == "FINISHED" || status == "BACKWARD" || status == "BACKWARD_ERROR" {
@@ -36,7 +36,7 @@ func (c Transaction) UpdateInfos(ctx context.Context, ID uuid.UUID, retry int, s
 		FinishedAt: finishedAt,
 	}
 
-	if err := c.orm.UpdateTransaction(ctx, genrepo.UpdateTransactionParams{
+	if err := t.orm.UpdateTransaction(ctx, genrepo.UpdateTransactionParams{
 		EventID: ID,
 		Status:  input.Status,
 		TotalRetry: sql.NullInt32{
@@ -54,12 +54,12 @@ func (c Transaction) UpdateInfos(ctx context.Context, ID uuid.UUID, retry int, s
 	return nil
 }
 
-func (c Transaction) SaveTx(ctx context.Context, input types.PayloadType) error {
+func (t Transaction) SaveTx(ctx context.Context, input types.PayloadType) error {
 	opts, _ := json.Marshal(input.Opts)
 	payload, _ := json.Marshal(input.Payload)
 	info, _ := json.Marshal(input.Info)
 
-	if err := c.orm.CreateTransaction(ctx, genrepo.CreateTransactionParams{
+	if err := t.orm.CreateTransaction(ctx, genrepo.CreateTransactionParams{
 		EventID:   input.EventID,
 		EventName: input.EventName,
 		Opts:      opts,
@@ -75,6 +75,57 @@ func (c Transaction) SaveTx(ctx context.Context, input types.PayloadType) error 
 		Status:  "PENDING",
 	}); err != nil {
 		return fmt.Errorf("could not create transaction with error: %v\n", err)
+	}
+
+	return nil
+}
+
+func (t Transaction) SagaUpdateInfos(ctx context.Context, ID uuid.UUID, retry int, status string) error {
+	if err := t.orm.UpdateTxSaga(ctx, genrepo.UpdateTxSagaParams{
+		EventID: ID,
+		Status:  status,
+		TotalRetry: sql.NullInt32{
+			Int32: int32(retry),
+			Valid: true,
+		},
+		EndedAt: sql.NullTime{
+			Time:  time.Now(),
+			Valid: true,
+		},
+	}); err != nil {
+		return fmt.Errorf("could not update transaction with error: %v\n", err)
+	}
+
+	return nil
+}
+
+func (t Transaction) SagaSaveTx(ctx context.Context, input types.PayloadType) error {
+	opts, _ := json.Marshal(input.Opts)
+	payload, _ := json.Marshal(input.Payload)
+	info, _ := json.Marshal(input.Info)
+
+	transaction, err := t.orm.GetTransactionByEventID(ctx, input.TransactionEventID)
+	if err != nil {
+		return fmt.Errorf("could not get transaction with error: %v\n", err)
+	}
+
+	if err := t.orm.CreateTxSaga(ctx, genrepo.CreateTxSagaParams{
+		TransactionID: transaction.ID,
+		EventID:       input.EventID,
+		EventName:     input.EventName,
+		Opts:          opts,
+		StartedAt: sql.NullTime{
+			Time:  input.CreatedAt,
+			Valid: true,
+		},
+		Info: pqtype.NullRawMessage{
+			RawMessage: info,
+			Valid:      true,
+		},
+		Payload: payload,
+		Status:  "PENDING",
+	}); err != nil {
+		return fmt.Errorf("could not create tx_sagas with error: %v\n", err)
 	}
 
 	return nil

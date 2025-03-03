@@ -2,16 +2,11 @@ package SDK
 
 import (
 	"context"
-	"database/sql"
 	"event-driven/broker"
-	"event-driven/database"
-	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/internal/utils"
-	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
-	"log"
 	"time"
 )
 
@@ -31,18 +26,10 @@ type SagaPattern struct {
 
 	repository types.Repository
 	pb         *broker.PublisherServer
-	db         *sql.DB
 }
 
-func NewSagaPattern(conn types.Connection, consumers []ConsumerInput, options types.Opts, sequencePayloads bool) *SagaPattern {
-	db, err := database.NewConnection(conn.Database)
-	if err != nil {
-		log.Fatalf("could not connect to database: %v", err)
-	}
-
-	orm := genrepo.New(db)
-	repo := repository.NewSaga(orm)
-	pb := broker.NewProducerServer(conn.RedisAddr)
+func NewSagaPattern(rdAddr string, repo types.Repository, consumers []ConsumerInput, options types.Opts, sequencePayloads bool) *SagaPattern {
+	pb := broker.NewProducerServer(rdAddr)
 
 	return &SagaPattern{
 		Consumers:        consumers,
@@ -69,7 +56,7 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 		eventID := uuid.New()
 		events[c.GetEventName()] = eventID
 
-		if err := sp.repository.SaveTx(ctx, types.PayloadType{
+		if err := sp.repository.SagaSaveTx(ctx, types.PayloadType{
 			TransactionEventID: txID,
 			EventID:            eventID,
 			Payload:            payload,
@@ -82,13 +69,13 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 
 		payload.EventID = eventID
 		if err := sp.executeUpFn(ctx, c.UpFn, payload, sp.Options, 0); err != nil {
-			sp.repository.UpdateInfos(ctx, payload.EventID, sp.Options.MaxRetry, "COMMITED_ERROR")
+			sp.repository.SagaUpdateInfos(ctx, payload.EventID, sp.Options.MaxRetry, "COMMITED_ERROR")
 			fmt.Printf("could not execute upFn with error: %v\n", err)
 			hasError = true
 			break
 		}
 
-		if err := sp.repository.UpdateInfos(ctx, eventID, 0, "COMMITED"); err != nil {
+		if err := sp.repository.SagaUpdateInfos(ctx, eventID, 0, "COMMITED"); err != nil {
 			fmt.Printf("could not update infos with error: %v\n", err)
 		}
 
@@ -101,12 +88,12 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 			eventID := events[rollbackConsumers[i].GetEventName()]
 			configs := sp.getConfig(sp.Options, rollbackConsumers[i].GetConfig())
 			if err := sp.executeDownFn(ctx, rollbackConsumers[i].DownFn, payload, configs, 2); err != nil {
-				if err := sp.repository.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR"); err != nil {
+				if err := sp.repository.SagaUpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR"); err != nil {
 					fmt.Printf("error on update info: %v\n", err)
 				}
 				return fmt.Errorf("could not rollback with error: %v", err)
 			}
-			if err := sp.repository.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD"); err != nil {
+			if err := sp.repository.SagaUpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD"); err != nil {
 				fmt.Printf("error on update info: %v\n", err)
 			}
 		}
@@ -158,5 +145,4 @@ func (sp SagaPattern) getConfig(taskConfig, sagaConfig types.Opts) types.Opts {
 
 func (sp SagaPattern) Close() {
 	sp.pb.Close()
-	sp.db.Close()
 }

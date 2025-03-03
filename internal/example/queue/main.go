@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"event-driven/SDK"
+	"event-driven/database"
+	genrepo "event-driven/internal/sqlc/generated/repository"
+	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
+	"log"
 
 	"os"
 	"os/signal"
@@ -18,12 +22,17 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	conn := types.Connection{
-		Database:  connectionString,
-		RedisAddr: rdAddr,
+	db, err := database.NewConnection(connectionString)
+	if err != nil {
+		log.Fatalf("could not connect to database: %v", err)
 	}
 
-	producer := SDK.NewProducer(conn, types.EmptyOpts)
+	defer db.Close()
+
+	orm := genrepo.New(db)
+	repo := repository.New(orm)
+
+	producer := SDK.NewProducer(rdAddr, repo, types.EmptyOpts)
 
 	defer producer.Close()
 
@@ -34,7 +43,7 @@ func main() {
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	consumer := SDK.NewConsumerServer(conn)
+	consumer := SDK.NewConsumerServer(rdAddr, repo)
 
 	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
 		"event_example_01": ConsumerExample01,

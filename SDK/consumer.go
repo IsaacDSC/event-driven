@@ -4,10 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"event-driven/database"
-	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/internal/utils"
-	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
@@ -22,9 +19,9 @@ type ConsumerServer struct {
 	repository types.Repository
 }
 
-func NewConsumerServer(conn types.Connection) *ConsumerServer {
+func NewConsumerServer(rdAddr string, repo types.Repository) *ConsumerServer {
 	srv := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: conn.RedisAddr},
+		asynq.RedisClientOpt{Addr: rdAddr},
 		asynq.Config{
 			Concurrency: 10,
 			Queues: map[string]int{
@@ -34,14 +31,6 @@ func NewConsumerServer(conn types.Connection) *ConsumerServer {
 			},
 		},
 	)
-
-	db, err := database.NewConnection(conn.Database)
-	if err != nil {
-		log.Fatalf("could not connect to database: %v", err)
-	}
-
-	orm := genrepo.New(db)
-	repo := repository.NewTransaction(orm)
 
 	return &ConsumerServer{
 		server:     srv,

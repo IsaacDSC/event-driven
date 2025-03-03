@@ -2,17 +2,12 @@ package SDK
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"event-driven/broker"
-	"event-driven/database"
-	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/internal/utils"
-	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
-	"log"
 	"time"
 )
 
@@ -21,18 +16,10 @@ type Producer struct {
 	defaultOpts *types.Opts
 	repository  types.Repository
 	pb          *broker.PublisherServer
-	db          *sql.DB
 }
 
-func NewProducer(conn types.Connection, defaultOpts *types.Opts) *Producer {
-	db, err := database.NewConnection(conn.Database)
-	if err != nil {
-		log.Fatalf("could not connect to database: %v", err)
-	}
-
-	orm := genrepo.New(db)
-	repo := repository.NewTransaction(orm)
-	pb := broker.NewProducerServer(conn.RedisAddr)
+func NewProducer(rdAddr string, repo types.Repository, defaultOpts *types.Opts) *Producer {
+	pb := broker.NewProducerServer(rdAddr)
 
 	if defaultOpts == nil {
 		defaultOpts = &types.Opts{
@@ -44,7 +31,6 @@ func NewProducer(conn types.Connection, defaultOpts *types.Opts) *Producer {
 		repository:  repo,
 		defaultOpts: defaultOpts,
 		pb:          pb,
-		db:          db,
 	}
 }
 
@@ -106,5 +92,4 @@ func (p Producer) anyToMap(input any) (types.PayloadInput, error) {
 
 func (p Producer) Close() {
 	p.pb.Close()
-	p.db.Close()
 }

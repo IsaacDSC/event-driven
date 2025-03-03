@@ -3,26 +3,43 @@ package main
 import (
 	"context"
 	"event-driven/SDK"
+	"event-driven/database"
 	"event-driven/internal/example/checkout/domains"
+	genrepo "event-driven/internal/sqlc/generated/repository"
+	"event-driven/repository"
 	"event-driven/types"
+	"log"
 	"time"
 )
+
+const connectionString = "user=root password=root dbname=event-driven sslmode=disable"
+const rdAddr = "localhost:6379"
 
 const EventCheckoutCreated = "event.checkout.created"
 
 func main() {
-	if err := producer(); err != nil {
+	db, err := database.NewConnection(connectionString)
+	if err != nil {
+		log.Fatalf("could not connect to database: %v", err)
+	}
+
+	defer db.Close()
+
+	orm := genrepo.New(db)
+	repo := repository.NewSaga(orm)
+
+	if err := producer(repo); err != nil {
 		panic(err)
 	}
 
-	if err := consumer(); err != nil {
+	if err := consumer(repo); err != nil {
 		panic(err)
 	}
 
 }
 
-func producer() error {
-	pd := SDK.NewProducer("http://localhost:3333", &types.Opts{
+func producer(repo types.Repository) error {
+	pd := SDK.NewProducer(rdAddr, repo, &types.Opts{
 		MaxRetry: 5,
 		DeadLine: time.Now().Add(15 * time.Minute),
 	})
@@ -55,13 +72,14 @@ func producer() error {
 }
 
 // CHECKOUT TASK EXAMPLE
-func consumer() error {
+func consumer(repo types.Repository) error {
 	sgPayment := domains.NewPayment()
 	sgStock := domains.NewStock()
 	sgDelivery := domains.NewDelivery()
 	sgNotify := domains.NewNotify()
 
-	sp := SDK.NewSagaPattern([]SDK.ConsumerInput{
+	//TODO: adicionar uma espécie de herança de saga e consumer
+	sp := SDK.NewSagaPattern(rdAddr, repo, []SDK.ConsumerInput{
 		sgPayment,
 		sgStock,
 		sgDelivery,
@@ -69,7 +87,8 @@ func consumer() error {
 	}, types.Opts{
 		MaxRetry: 3,
 	}, false)
-	consumer := SDK.NewConsumerServer("localhost:6379")
+
+	consumer := SDK.NewConsumerServer(rdAddr, repo)
 
 	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
 		EventCheckoutCreated: sp.Consumer,
