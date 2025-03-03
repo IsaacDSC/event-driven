@@ -4,7 +4,6 @@ import (
 	"context"
 	"event-driven/SDK"
 	"event-driven/database"
-	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
@@ -29,8 +28,7 @@ func main() {
 
 	defer db.Close()
 
-	orm := genrepo.New(db)
-	repo := repository.New(orm)
+	repo := repository.New(db)
 
 	producer := SDK.NewProducer(rdAddr, repo, types.EmptyOpts)
 

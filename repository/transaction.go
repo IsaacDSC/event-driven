@@ -19,8 +19,8 @@ type Transaction struct {
 // Ensure Transaction implements Repository
 var _ types.Repository = (*Transaction)(nil)
 
-func New(orm *genrepo.Queries) *Transaction {
-	return &Transaction{orm: orm}
+func New(db *sql.DB) *Transaction {
+	return &Transaction{orm: genrepo.New(db)}
 }
 
 func (t Transaction) UpdateInfos(ctx context.Context, ID uuid.UUID, retry int, status string) error {

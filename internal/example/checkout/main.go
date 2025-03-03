@@ -5,7 +5,6 @@ import (
 	"event-driven/SDK"
 	"event-driven/database"
 	"event-driven/internal/example/checkout/domains"
-	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/repository"
 	"event-driven/types"
 	"log"
@@ -25,8 +24,7 @@ func main() {
 
 	defer db.Close()
 
-	orm := genrepo.New(db)
-	repo := repository.New(orm)
+	repo := repository.New(db)
 
 	if err := producer(repo); err != nil {
 		panic(err)
