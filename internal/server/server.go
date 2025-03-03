@@ -2,7 +2,7 @@ package server
 
 import (
 	"database/sql"
-	"event-driven/internal/server/broker"
+	broker2 "event-driven/broker"
 	"event-driven/internal/server/web"
 	"event-driven/internal/sqlc"
 	"event-driven/internal/utils"
@@ -22,9 +22,9 @@ func NewServer(client *redis.Client, db *sql.DB) *Server {
 }
 
 func (s *Server) StartServer() error {
-	go broker.NewSubscriberServer("localhost:6379", s.db)
+	go broker2.NewSubscriberServer("localhost:6379", s.db)
 
-	pbServer := broker.NewProducerServer("localhost:6379")
+	pbServer := broker2.NewProducerServer("localhost:6379")
 	defer pbServer.Close()
 
 	repository := sqlc.NewRepository(s.db)

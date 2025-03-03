@@ -3,7 +3,7 @@ package server
 import (
 	"database/sql"
 	"event-driven/SDK"
-	"event-driven/internal/server/broker"
+	"event-driven/broker"
 )
 
 type EventDriven struct {

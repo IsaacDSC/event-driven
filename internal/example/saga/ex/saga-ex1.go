@@ -5,7 +5,6 @@ import (
 	"event-driven/SDK"
 	"event-driven/types"
 	"fmt"
-	"github.com/google/uuid"
 )
 
 type SagaExample struct{}
@@ -31,5 +30,5 @@ func (s SagaExample) GetConfig() types.Opts {
 }
 
 func (s SagaExample) GetEventName() string {
-	return fmt.Sprintf("%s.%s.%s", "saga", "example", uuid.New().String()[0:5])
+	return fmt.Sprintf("%s.%s.%s", "saga", "example", "1")
 }

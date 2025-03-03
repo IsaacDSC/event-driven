@@ -2,31 +2,49 @@ package SDK
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
-	"event-driven/internal/acl"
+	"event-driven/broker"
+	"event-driven/database"
+	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/internal/utils"
+	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
+	"log"
 	"time"
 )
 
 type Producer struct {
 	host        string
 	defaultOpts *types.Opts
-	client      types.ClientInterface
+	repository  types.Repository
+	pb          *broker.PublisherServer
+	db          *sql.DB
 }
 
-func NewProducer(host string, defaultOpts *types.Opts) *Producer {
+func NewProducer(conn types.Connection, defaultOpts *types.Opts) *Producer {
+	db, err := database.NewConnection(conn.Database)
+	if err != nil {
+		log.Fatalf("could not connect to database: %v", err)
+	}
+
+	orm := genrepo.New(db)
+	repo := repository.NewTransaction(orm)
+	pb := broker.NewProducerServer(conn.RedisAddr)
+
 	if defaultOpts == nil {
 		defaultOpts = &types.Opts{
 			MaxRetry: 10,
 		}
 	}
+
 	return &Producer{
-		client:      acl.NewClient("http://localhost:3333/task"),
-		host:        host,
+		repository:  repo,
 		defaultOpts: defaultOpts,
+		pb:          pb,
+		db:          db,
 	}
 }
 
@@ -60,8 +78,12 @@ func (p Producer) createMsg(ctx context.Context, eventType types.EventType, even
 		Type:        eventType,
 	}
 
-	if err := p.client.CreateMsg(ctx, input); err != nil {
+	if err := p.repository.SaveTx(ctx, input); err != nil {
 		return fmt.Errorf("could not create message: %v", err)
+	}
+
+	if err := p.pb.Producer(ctx, input); err != nil {
+		return fmt.Errorf("could not send message with error: %v\n", err)
 	}
 
 	return nil
@@ -80,4 +102,9 @@ func (p Producer) anyToMap(input any) (types.PayloadInput, error) {
 	output.Data = b
 
 	return output, nil
+}
+
+func (p Producer) Close() {
+	p.pb.Close()
+	p.db.Close()
 }

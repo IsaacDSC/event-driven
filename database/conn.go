@@ -3,10 +3,11 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/lib/pq"
 )
 
-func NewConnection() (db *sql.DB, err error) {
-	db, err = sql.Open("postgres", "user=root password=root dbname=event-driven sslmode=disable")
+func NewConnection(connStr string) (db *sql.DB, err error) {
+	db, err = sql.Open("postgres", connStr)
 	if err != nil {
 		err = fmt.Errorf("could not connect to database: %v", err)
 		return

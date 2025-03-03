@@ -3,7 +3,7 @@ package web
 import (
 	"database/sql"
 	"encoding/json"
-	"event-driven/internal/server/broker"
+	"event-driven/broker"
 	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/types"
 	"fmt"

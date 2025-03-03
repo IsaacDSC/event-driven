@@ -2,11 +2,16 @@ package SDK
 
 import (
 	"context"
-	"event-driven/internal/acl"
+	"database/sql"
+	"event-driven/broker"
+	"event-driven/database"
+	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/internal/utils"
+	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
+	"log"
 	"time"
 )
 
@@ -23,16 +28,28 @@ type SagaPattern struct {
 	Consumers        []ConsumerInput
 	Options          types.Opts
 	SequencePayloads bool
-	client           *acl.Client
+
+	repository types.Repository
+	pb         *broker.PublisherServer
+	db         *sql.DB
 }
 
-func NewSagaPattern(consumers []ConsumerInput, options types.Opts, sequencePayloads bool) *SagaPattern {
-	client := acl.NewClient("http://localhost:3333/saga")
+func NewSagaPattern(conn types.Connection, consumers []ConsumerInput, options types.Opts, sequencePayloads bool) *SagaPattern {
+	db, err := database.NewConnection(conn.Database)
+	if err != nil {
+		log.Fatalf("could not connect to database: %v", err)
+	}
+
+	orm := genrepo.New(db)
+	repo := repository.NewSaga(orm)
+	pb := broker.NewProducerServer(conn.RedisAddr)
+
 	return &SagaPattern{
 		Consumers:        consumers,
 		Options:          options,
 		SequencePayloads: sequencePayloads,
-		client:           client,
+		repository:       repo,
+		pb:               pb,
 	}
 }
 
@@ -52,7 +69,7 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 		eventID := uuid.New()
 		events[c.GetEventName()] = eventID
 
-		if err := sp.client.CreateMsg(ctx, types.PayloadType{
+		if err := sp.repository.SaveTx(ctx, types.PayloadType{
 			TransactionEventID: txID,
 			EventID:            eventID,
 			Payload:            payload,
@@ -63,12 +80,17 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 			fmt.Printf("could not create message with error: %v\n", err)
 		}
 
+		payload.EventID = eventID
 		if err := sp.executeUpFn(ctx, c.UpFn, payload, sp.Options, 0); err != nil {
+			sp.repository.UpdateInfos(ctx, payload.EventID, sp.Options.MaxRetry, "COMMITED_ERROR")
+			fmt.Printf("could not execute upFn with error: %v\n", err)
 			hasError = true
 			break
 		}
 
-		sp.client.UpdateInfos(ctx, eventID, 0, "COMMITED")
+		if err := sp.repository.UpdateInfos(ctx, eventID, 0, "COMMITED"); err != nil {
+			fmt.Printf("could not update infos with error: %v\n", err)
+		}
 
 		committed++
 	}
@@ -79,10 +101,14 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 			eventID := events[rollbackConsumers[i].GetEventName()]
 			configs := sp.getConfig(sp.Options, rollbackConsumers[i].GetConfig())
 			if err := sp.executeDownFn(ctx, rollbackConsumers[i].DownFn, payload, configs, 2); err != nil {
-				sp.client.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR")
+				if err := sp.repository.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR"); err != nil {
+					fmt.Printf("error on update info: %v\n", err)
+				}
 				return fmt.Errorf("could not rollback with error: %v", err)
 			}
-			sp.client.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD")
+			if err := sp.repository.UpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD"); err != nil {
+				fmt.Printf("error on update info: %v\n", err)
+			}
 		}
 	}
 
@@ -99,7 +125,6 @@ func (sp SagaPattern) executeUpFn(ctx context.Context, fn Fn, payload types.Payl
 		attempt += 1
 		backoffDuration := time.Duration(attempt*attempt) * time.Second
 		time.Sleep(backoffDuration)
-		//	TODO: add registry error in database (retry X with error Y)
 		return sp.executeUpFn(ctx, fn, payload, opts, attempt)
 	}
 
@@ -116,9 +141,7 @@ func (sp SagaPattern) executeDownFn(ctx context.Context, fn Fn, payload types.Pa
 		attempt += 1
 		backoffDuration := time.Duration(attempt*attempt) * time.Second
 		time.Sleep(backoffDuration)
-		//	TODO: add registry error in database (retry X with error Y)
 		return sp.executeDownFn(ctx, fn, payload, opts, attempt)
-
 	}
 
 	return
@@ -131,4 +154,9 @@ func (sp SagaPattern) getConfig(taskConfig, sagaConfig types.Opts) types.Opts {
 
 	return sagaConfig
 
+}
+
+func (sp SagaPattern) Close() {
+	sp.pb.Close()
+	sp.db.Close()
 }

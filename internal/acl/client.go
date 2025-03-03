@@ -7,7 +7,6 @@ import (
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
-	"log"
 	"net/http"
 	"time"
 )
@@ -17,8 +16,8 @@ type Client struct {
 	baseUrl    string
 }
 
-// Ensure Client implements ClientInterface
-var _ types.ClientInterface = (*Client)(nil)
+// Ensure Client implements Repository
+var _ types.Repository = (*Client)(nil)
 
 func NewClient(baseUrl string) *Client {
 	client := &http.Client{
@@ -31,7 +30,7 @@ func NewClient(baseUrl string) *Client {
 	}
 }
 
-func (c Client) UpdateInfos(ctx context.Context, txID uuid.UUID, retry int, status string) {
+func (c Client) UpdateInfos(ctx context.Context, txID uuid.UUID, retry int, status string) error {
 	//TODO: review this responsibility
 	var finishedAt time.Time
 	if status == "FINISHED" || status == "BACKWARD" || status == "BACKWARD_ERROR" {
@@ -47,26 +46,26 @@ func (c Client) UpdateInfos(ctx context.Context, txID uuid.UUID, retry int, stat
 
 	taskInput, err := json.Marshal(input)
 	if err != nil {
-		log.Printf("could not marshal task: %v\n", err)
+		return fmt.Errorf("could not marshal task: %v\n", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(taskInput))
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	res, err := c.httpclient.Do(req)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
 	if res.StatusCode != http.StatusAccepted {
 		fmt.Printf("unexpected status code: %d", res.StatusCode)
 	}
+
+	return nil
 }
 
-func (c Client) CreateMsg(ctx context.Context, input types.PayloadType) error {
+func (c Client) SaveTx(ctx context.Context, input types.PayloadType) error {
 	taskInput, err := json.Marshal(input)
 	if err != nil {
 		return fmt.Errorf("could not marshal task: %v", err)

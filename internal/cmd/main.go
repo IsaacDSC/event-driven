@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"event-driven/internal/database"
+	"event-driven/database"
 	"event-driven/internal/server"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"

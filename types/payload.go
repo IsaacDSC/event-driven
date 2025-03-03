@@ -61,3 +61,8 @@ type ProducerFn func(ctx context.Context) error
 
 // consumer
 type ConsumerFn func(ctx context.Context, payload PayloadInput) error
+
+type Connection struct {
+	Database  string
+	RedisAddr string
+}

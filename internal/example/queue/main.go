@@ -5,20 +5,29 @@ import (
 	"event-driven/SDK"
 	"event-driven/types"
 	"fmt"
+
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-const serverHost = "http://localhost:3333"
+const connectionString = "user=root password=root dbname=event-driven sslmode=disable"
+const rdAddr = "localhost:6379"
 
 func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	producer := SDK.NewProducer(serverHost, nil)
-	ctx := context.Background()
+	conn := types.Connection{
+		Database:  connectionString,
+		RedisAddr: rdAddr,
+	}
 
+	producer := SDK.NewProducer(conn, types.EmptyOpts)
+
+	defer producer.Close()
+
+	ctx := context.Background()
 	if err := producer.Producer(ctx, "event_example_01", map[string]any{"key": "value"}, ConsumerExample01); err != nil {
 		panic(err)
 	}
