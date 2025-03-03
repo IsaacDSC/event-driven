@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"event-driven/internal/acl"
+	"event-driven/database"
+	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/internal/utils"
+	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
 	"github.com/google/uuid"
@@ -15,16 +17,14 @@ import (
 )
 
 type ConsumerServer struct {
-	server *asynq.Server
-	mux    *asynq.ServeMux
-	client *acl.Client
+	server     *asynq.Server
+	mux        *asynq.ServeMux
+	repository types.Repository
 }
 
-const baseUrl = "http://localhost:3333/task"
-
-func NewConsumerServer(addr string) *ConsumerServer {
+func NewConsumerServer(conn types.Connection) *ConsumerServer {
 	srv := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: addr},
+		asynq.RedisClientOpt{Addr: conn.RedisAddr},
 		asynq.Config{
 			Concurrency: 10,
 			Queues: map[string]int{
@@ -35,9 +35,17 @@ func NewConsumerServer(addr string) *ConsumerServer {
 		},
 	)
 
+	db, err := database.NewConnection(conn.Database)
+	if err != nil {
+		log.Fatalf("could not connect to database: %v", err)
+	}
+
+	orm := genrepo.New(db)
+	repo := repository.NewTransaction(orm)
+
 	return &ConsumerServer{
-		server: srv,
-		client: acl.NewClient(baseUrl),
+		server:     srv,
+		repository: repo,
 	}
 }
 
@@ -103,12 +111,12 @@ func (cs *ConsumerServer) middleware(h asynq.Handler) asynq.Handler {
 
 		if err := h.ProcessTask(ctx, t); err != nil {
 			retry, _ := asynq.GetRetryCount(ctx)
-			cs.client.UpdateInfos(ctx, txID, retry, "ERROR")
+			cs.repository.UpdateInfos(ctx, txID, retry, "ERROR")
 			return err
 		}
 
 		retry, _ := asynq.GetRetryCount(ctx)
-		cs.client.UpdateInfos(ctx, txID, retry, "FINISHED")
+		cs.repository.UpdateInfos(ctx, txID, retry, "FINISHED")
 
 		log.Printf("Finished processing %q: Elapsed Time = %v", t.Type(), time.Since(start))
 		return nil

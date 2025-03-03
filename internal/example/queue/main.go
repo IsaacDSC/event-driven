@@ -34,7 +34,7 @@ func main() {
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	consumer := SDK.NewConsumerServer("localhost:6379")
+	consumer := SDK.NewConsumerServer(conn)
 
 	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
 		"event_example_01": ConsumerExample01,

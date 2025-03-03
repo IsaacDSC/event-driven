@@ -26,18 +26,16 @@ func main() {
 	sg1 := ex.NewSagaExample()
 	sg2 := ex.NewSagaExample2()
 
-	sp := SDK.NewSagaPattern(
-		types.Connection{
-			Database:  connectionString,
-			RedisAddr: rdAddr,
-		},
-		[]SDK.ConsumerInput{sg1, sg2}, types.Opts{
-			MaxRetry: 3,
-		},
-		false,
-	)
+	conn := types.Connection{
+		Database:  connectionString,
+		RedisAddr: rdAddr,
+	}
 
-	consumer := SDK.NewConsumerServer(rdAddr)
+	defaultSettings := types.Opts{MaxRetry: 3}
+
+	sp := SDK.NewSagaPattern(conn, []SDK.ConsumerInput{sg1, sg2}, defaultSettings, false)
+
+	consumer := SDK.NewConsumerServer(conn)
 
 	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
 		"event_example_01": sp.Consumer,
