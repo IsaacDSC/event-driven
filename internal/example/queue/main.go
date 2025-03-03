@@ -29,7 +29,6 @@ func main() {
 	defer db.Close()
 
 	repo := repository.New(db)
-
 	producer := SDK.NewProducer(rdAddr, repo, types.EmptyOpts)
 
 	defer producer.Close()

@@ -2,7 +2,7 @@ package SDK
 
 import (
 	"context"
-	"event-driven/broker"
+	"event-driven/internal/broker"
 	"event-driven/internal/utils"
 	"event-driven/types"
 	"fmt"
