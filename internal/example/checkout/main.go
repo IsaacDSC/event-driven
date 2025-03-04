@@ -76,7 +76,6 @@ func consumer(repo types.Repository) error {
 	sgDelivery := domains.NewDelivery()
 	sgNotify := domains.NewNotify()
 
-	//TODO: adicionar uma espécie de herança de saga e consumer
 	sp := SDK.NewSagaPattern(rdAddr, repo, []types.ConsumerInput{
 		sgPayment,
 		sgStock,
@@ -86,9 +85,7 @@ func consumer(repo types.Repository) error {
 		MaxRetry: 3,
 	}, false)
 
-	consumer := SDK.NewConsumerServer(rdAddr, repo)
-
-	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
+	if err := sp.WithConsumerServer(rdAddr, repo).AddHandlers(map[string]types.ConsumerFn{
 		EventCheckoutCreated: sp.Consumer,
 	}).Start(); err != nil {
 		return err

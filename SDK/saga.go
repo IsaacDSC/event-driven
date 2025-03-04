@@ -11,6 +11,8 @@ import (
 )
 
 type SagaPattern struct {
+	ConsumerServer
+
 	Consumers        []types.ConsumerInput
 	Options          types.Opts
 	SequencePayloads bool

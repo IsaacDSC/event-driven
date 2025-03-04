@@ -42,9 +42,7 @@ func main() {
 
 	sp := SDK.NewSagaPattern(rdAddr, repo, []types.ConsumerInput{sg1, sg2}, defaultSettings, false)
 
-	consumer := SDK.NewConsumerServer(rdAddr, repo)
-
-	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
+	if err := sp.WithConsumerServer(rdAddr, repo).AddHandlers(map[string]types.ConsumerFn{
 		"event_example_01": sp.Consumer,
 	}).Start(); err != nil {
 		panic(err)

@@ -38,6 +38,25 @@ func NewConsumerServer(rdAddr string, repo types.Repository) *ConsumerServer {
 	}
 }
 
+func (cs *ConsumerServer) WithConsumerServer(rdAddr string, repo types.Repository) *ConsumerServer {
+	srv := asynq.NewServer(
+		asynq.RedisClientOpt{Addr: rdAddr},
+		asynq.Config{
+			Concurrency: 10,
+			Queues: map[string]int{
+				"critical": 6,
+				"default":  3,
+				"low":      1,
+			},
+		},
+	)
+
+	return &ConsumerServer{
+		server:     srv,
+		repository: repo,
+	}
+}
+
 func (cs *ConsumerServer) AddHandlers(consumers map[string]types.ConsumerFn) *ConsumerServer {
 	//TODO: Separate for other layers //This Layer not communicate with asynq
 	mux := asynq.NewServeMux()
