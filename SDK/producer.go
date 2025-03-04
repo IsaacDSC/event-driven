@@ -7,19 +7,19 @@ import (
 	"event-driven/internal/utils"
 	"event-driven/types"
 	"fmt"
-	"github.com/google/uuid"
-	"time"
 )
 
 type Producer struct {
 	host        string
 	defaultOpts *types.Opts
 	repository  types.Repository
-	pb          *broker.PublisherServer
+	pb          types.Producer
+	dt          types.TimeProvider
 }
 
 func NewProducer(rdAddr string, repo types.Repository, defaultOpts *types.Opts) *Producer {
 	pb := broker.NewProducerServer(rdAddr)
+	dt := utils.NewDateTime()
 
 	if defaultOpts == nil {
 		defaultOpts = &types.Opts{
@@ -31,6 +31,7 @@ func NewProducer(rdAddr string, repo types.Repository, defaultOpts *types.Opts) 
 		repository:  repo,
 		defaultOpts: defaultOpts,
 		pb:          pb,
+		dt:          dt,
 	}
 }
 
@@ -52,7 +53,7 @@ func (p Producer) createMsg(ctx context.Context, eventType types.EventType, even
 		return err
 	}
 
-	eventID := uuid.New()
+	eventID := p.pb.GenerateEventID()
 	ctx = utils.SetTxIDToCtx(ctx, eventID)
 	input := types.PayloadType{
 		EventID:     eventID,
@@ -60,7 +61,7 @@ func (p Producer) createMsg(ctx context.Context, eventType types.EventType, even
 		EventName:   eventName,
 		EventsNames: nil,     //TODO: not implemented
 		Opts:        opts[0], //TODO: not implemented
-		CreatedAt:   time.Now(),
+		CreatedAt:   p.dt.Now(),
 		Type:        eventType,
 	}
 
@@ -85,8 +86,8 @@ func (p Producer) anyToMap(input any) (types.PayloadInput, error) {
 		return output, fmt.Errorf("could not marshal payload: %v", err)
 	}
 
-	output.EventID = uuid.New()
-	output.CreatedAt = time.Now()
+	output.EventID = p.pb.GenerateEventID()
+	output.CreatedAt = p.dt.Now()
 	output.Data = b
 
 	return output, nil

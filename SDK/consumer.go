@@ -39,6 +39,7 @@ func NewConsumerServer(rdAddr string, repo types.Repository) *ConsumerServer {
 }
 
 func (cs *ConsumerServer) AddHandlers(consumers map[string]types.ConsumerFn) *ConsumerServer {
+	//TODO: Separate for other layers //This Layer not communicate with asynq
 	mux := asynq.NewServeMux()
 	mux.Use(cs.middleware)
 	for eventName, fn := range consumers {

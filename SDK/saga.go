@@ -10,25 +10,16 @@ import (
 	"time"
 )
 
-type Fn func(ctx context.Context, payload types.PayloadInput) error
-
-type ConsumerInput interface {
-	UpFn(ctx context.Context, payload types.PayloadInput) error
-	DownFn(ctx context.Context, payload types.PayloadInput) error
-	GetConfig() types.Opts
-	GetEventName() string
-}
-
 type SagaPattern struct {
-	Consumers        []ConsumerInput
+	Consumers        []types.ConsumerInput
 	Options          types.Opts
 	SequencePayloads bool
 
 	repository types.Repository
-	pb         *broker.PublisherServer
+	pb         types.Producer
 }
 
-func NewSagaPattern(rdAddr string, repo types.Repository, consumers []ConsumerInput, options types.Opts, sequencePayloads bool) *SagaPattern {
+func NewSagaPattern(rdAddr string, repo types.Repository, consumers []types.ConsumerInput, options types.Opts, sequencePayloads bool) *SagaPattern {
 	pb := broker.NewProducerServer(rdAddr)
 
 	return &SagaPattern{
@@ -113,7 +104,7 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 	return nil
 }
 
-func (sp SagaPattern) executeUpFn(ctx context.Context, fn Fn, payload types.PayloadInput, opts types.Opts, attempt int) (err error) {
+func (sp SagaPattern) executeUpFn(ctx context.Context, fn types.Fn, payload types.PayloadInput, opts types.Opts, attempt int) (err error) {
 	if opts.MaxRetry == 0 {
 		return fn(ctx, payload)
 	}
@@ -129,7 +120,7 @@ func (sp SagaPattern) executeUpFn(ctx context.Context, fn Fn, payload types.Payl
 	return
 }
 
-func (sp SagaPattern) executeDownFn(ctx context.Context, fn Fn, payload types.PayloadInput, opts types.Opts, attempt int) (err error) {
+func (sp SagaPattern) executeDownFn(ctx context.Context, fn types.Fn, payload types.PayloadInput, opts types.Opts, attempt int) (err error) {
 	if opts.MaxRetry == 0 {
 		return fn(ctx, payload)
 	}

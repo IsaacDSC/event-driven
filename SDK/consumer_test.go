@@ -2,53 +2,59 @@ package SDK
 
 import (
 	"context"
+	"event-driven/internal/mocks"
 	"event-driven/types"
+	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
+	"go.uber.org/mock/gomock"
 	"testing"
 )
 
-func TestConsumer(t *testing.T) {
-	testCases := []struct {
-		name      string
-		consumers map[string]types.ConsumerFn
-		expectMux bool
-	}{
-		{
-			name: "Single handler",
-			consumers: map[string]types.ConsumerFn{
-				"event_example_01": func(ctx context.Context, payload map[string]any) error {
-					return nil
-				},
-			},
-			expectMux: true,
-		},
-		{
-			name: "Multiple handlers",
-			consumers: map[string]types.ConsumerFn{
-				"event_example_01": func(ctx context.Context, payload map[string]any) error {
-					return nil
-				},
-				"event_example_02": func(ctx context.Context, payload map[string]any) error {
-					return nil
-				},
-			},
-			expectMux: true,
-		},
-		{
-			name:      "No handlers",
-			consumers: map[string]types.ConsumerFn{},
-			expectMux: true,
-		},
+func setupRedisContainer(t *testing.T) (testcontainers.Container, string) {
+	ctx := context.Background()
+	req := testcontainers.ContainerRequest{
+		Image:        "redis:6.2",
+		ExposedPorts: []string{"6379/tcp"},
+		WaitingFor:   wait.ForListeningPort("6379/tcp"),
+	}
+	redisC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	require.NoError(t, err)
+
+	host, err := redisC.Host(ctx)
+	require.NoError(t, err)
+
+	port, err := redisC.MappedPort(ctx, "6379")
+	require.NoError(t, err)
+
+	redisAddr := fmt.Sprintf("%s:%s", host, port.Port())
+	return redisC, redisAddr
+}
+
+func TestConsumerServer_AddHandlers(t *testing.T) {
+	redisC, redisAddr := setupRedisContainer(t)
+	defer redisC.Terminate(context.Background())
+
+	mockController := gomock.NewController(t)
+	mockRepo := mocks.NewMockRepository(mockController)
+	server := NewConsumerServer(redisAddr, mockRepo)
+	oldMux := server.mux
+
+	consumerFn := func(ctx context.Context, payload types.PayloadInput) error {
+		return nil
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			consumer := NewConsumerServer("localhost:6379")
-			consumer.AddHandlers(tc.consumers)
-			if (consumer.mux != nil) != tc.expectMux {
-				t.Fatalf("expected mux to be %v, got %v", tc.expectMux, consumer.mux != nil)
-			}
-
-			consumer.Start()
-		})
+	consumers := map[string]types.ConsumerFn{
+		"event_example": consumerFn,
 	}
+
+	server.AddHandlers(consumers)
+
+	assert.NotNil(t, server.mux)
+	assert.NotEqual(t, oldMux, server.mux)
 }

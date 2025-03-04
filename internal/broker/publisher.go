@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"event-driven/internal/utils"
 	"event-driven/types"
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"time"
 )
@@ -12,6 +13,8 @@ import (
 type PublisherServer struct {
 	client *asynq.Client
 }
+
+var _ types.Producer = (*PublisherServer)(nil)
 
 func NewProducerServer(addr string) *PublisherServer {
 	client := asynq.NewClient(asynq.RedisClientOpt{Addr: addr})
@@ -66,4 +69,8 @@ func (ps PublisherServer) Producer(ctx context.Context, input types.PayloadType)
 	}
 
 	return nil
+}
+
+func (ps PublisherServer) GenerateEventID() uuid.UUID {
+	return uuid.New()
 }
