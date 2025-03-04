@@ -2,7 +2,6 @@ package domains
 
 import (
 	"context"
-	"event-driven/SDK"
 	"event-driven/internal/example/checkout/entities"
 	"event-driven/types"
 	"fmt"
@@ -15,7 +14,7 @@ func NewStock() *Stock {
 	return &Stock{}
 }
 
-var _ SDK.ConsumerInput = (*Stock)(nil)
+var _ types.ConsumerInput = (*Stock)(nil)
 
 func (s Stock) UpFn(ctx context.Context, payload types.PayloadInput) error {
 	var input entities.Order

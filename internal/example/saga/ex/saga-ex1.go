@@ -2,14 +2,13 @@ package ex
 
 import (
 	"context"
-	"event-driven/SDK"
 	"event-driven/types"
 	"fmt"
 )
 
 type SagaExample struct{}
 
-var _ SDK.ConsumerInput = (*SagaExample)(nil)
+var _ types.ConsumerInput = (*SagaExample)(nil)
 
 func NewSagaExample() *SagaExample {
 	return &SagaExample{}

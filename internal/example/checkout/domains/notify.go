@@ -2,7 +2,6 @@ package domains
 
 import (
 	"context"
-	"event-driven/SDK"
 	"event-driven/internal/example/checkout/entities"
 	"event-driven/internal/example/checkout/fakegate"
 	"event-driven/types"
@@ -16,7 +15,7 @@ func NewNotify() *Notify {
 	return &Notify{}
 }
 
-var _ SDK.ConsumerInput = (*Notify)(nil)
+var _ types.ConsumerInput = (*Notify)(nil)
 
 func (n Notify) UpFn(ctx context.Context, payload types.PayloadInput) error {
 	var input entities.Order

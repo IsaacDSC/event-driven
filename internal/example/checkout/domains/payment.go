@@ -2,7 +2,6 @@ package domains
 
 import (
 	"context"
-	"event-driven/SDK"
 	"event-driven/internal/example/checkout/entities"
 	"event-driven/internal/example/checkout/fakegate"
 	"event-driven/types"
@@ -16,7 +15,7 @@ func NewPayment() *Payment {
 	return &Payment{}
 }
 
-var _ SDK.ConsumerInput = (*Payment)(nil)
+var _ types.ConsumerInput = (*Payment)(nil)
 
 func (p Payment) UpFn(ctx context.Context, payload types.PayloadInput) error {
 	var input entities.Order
