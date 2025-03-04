@@ -40,7 +40,7 @@ func main() {
 
 	defaultSettings := types.Opts{MaxRetry: 3}
 
-	sp := SDK.NewSagaPattern(rdAddr, repo, []SDK.ConsumerInput{sg1, sg2}, defaultSettings, false)
+	sp := SDK.NewSagaPattern(rdAddr, repo, []types.ConsumerInput{sg1, sg2}, defaultSettings, false)
 
 	consumer := SDK.NewConsumerServer(rdAddr, repo)
 

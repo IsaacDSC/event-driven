@@ -77,7 +77,7 @@ func consumer(repo types.Repository) error {
 	sgNotify := domains.NewNotify()
 
 	//TODO: adicionar uma espécie de herança de saga e consumer
-	sp := SDK.NewSagaPattern(rdAddr, repo, []SDK.ConsumerInput{
+	sp := SDK.NewSagaPattern(rdAddr, repo, []types.ConsumerInput{
 		sgPayment,
 		sgStock,
 		sgDelivery,
