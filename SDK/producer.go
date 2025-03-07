@@ -15,6 +15,7 @@ type Producer struct {
 	repository  types.Repository
 	pb          types.Producer
 	dt          types.TimeProvider
+	log         types.Logger
 }
 
 func NewProducer(rdAddr string, repo types.Repository, defaultOpts *types.Opts) *Producer {
@@ -32,7 +33,9 @@ func NewProducer(rdAddr string, repo types.Repository, defaultOpts *types.Opts) 
 		defaultOpts: defaultOpts,
 		pb:          pb,
 		dt:          dt,
+		log:         utils.NewLogger("[*] - [Producer] - "),
 	}
+
 }
 
 func (p Producer) SagaProducer(ctx context.Context, eventName string, payload any, opts ...types.Opts) error {
@@ -67,11 +70,13 @@ func (p Producer) createMsg(ctx context.Context, eventType types.EventType, even
 
 	if p.repository != nil {
 		if err := p.repository.SaveTx(ctx, input); err != nil {
+			p.log.Error("could not save transaction", utils.KeyLogError, err.Error())
 			return fmt.Errorf("could not create message: %v", err)
 		}
 	}
 
 	if err := p.pb.Producer(ctx, input); err != nil {
+		p.log.Error("could not send message to producer", utils.KeyLogError, err.Error())
 		return fmt.Errorf("could not send message with error: %v\n", err)
 	}
 

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"event-driven/types"
 	"log/slog"
 	"os"
 )
@@ -9,6 +10,22 @@ type Logger struct {
 	logger *slog.Logger
 	prefix string
 }
+
+type KeyLogger string
+
+func (k KeyLogger) String() string {
+	return string(k)
+}
+
+const (
+	KeyLogError      KeyLogger = "error"
+	KeyAsynqTypeTask KeyLogger = "task.name"
+	KeyAsynqRetry    KeyLogger = "task.retry"
+	KeyAsynqTaskID   KeyLogger = "task.id"
+	KeyAsynqElapsed  KeyLogger = "task.elapsed"
+)
+
+var _ types.Logger = (*Logger)(nil)
 
 func NewLogger(prefix string) *Logger {
 	return &Logger{

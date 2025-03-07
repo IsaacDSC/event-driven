@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
-	"log"
 	"time"
 )
 
@@ -17,6 +16,7 @@ type ConsumerServer struct {
 	server     *asynq.Server
 	mux        *asynq.ServeMux
 	repository types.Repository
+	log        types.Logger
 }
 
 func NewConsumerServer(rdAddr string, repo types.Repository) *ConsumerServer {
@@ -35,6 +35,7 @@ func NewConsumerServer(rdAddr string, repo types.Repository) *ConsumerServer {
 	return &ConsumerServer{
 		server:     srv,
 		repository: repo,
+		log:        utils.NewLogger("consumer"),
 	}
 }
 
@@ -54,6 +55,7 @@ func (cs *ConsumerServer) WithConsumerServer(rdAddr string, repo types.Repositor
 	return &ConsumerServer{
 		server:     srv,
 		repository: repo,
+		log:        utils.NewLogger("[*] - [Consumer] - "),
 	}
 }
 
@@ -103,11 +105,11 @@ func (cs *ConsumerServer) Start() error {
 func (cs *ConsumerServer) middleware(h asynq.Handler) asynq.Handler {
 	return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
 		start := time.Now()
-		log.Printf("Start processing %q", t.Type())
+		cs.log.Info("Start processing", utils.KeyAsynqTypeTask.String(), t.Type())
 
 		taskID, ok := asynq.GetTaskID(ctx)
 		if !ok {
-			log.Printf("could not get task ID")
+			cs.log.Error("could not get task ID")
 			return errors.New("could not get task ID")
 		}
 
@@ -120,18 +122,44 @@ func (cs *ConsumerServer) middleware(h asynq.Handler) asynq.Handler {
 
 		if err := h.ProcessTask(ctx, t); err != nil {
 			retry, _ := asynq.GetRetryCount(ctx)
+
+			cs.log.Warn("could not process task",
+				utils.KeyAsynqTypeTask.String(), t.Type(),
+				utils.KeyAsynqTaskID.String(), taskID,
+				utils.KeyLogError.String(), err.Error(),
+				utils.KeyAsynqRetry.String(), retry,
+			)
+
 			if cs.repository != nil {
-				cs.repository.UpdateInfos(ctx, txID, retry, "ERROR")
+				if err := cs.repository.UpdateInfos(ctx, txID, retry, "ERROR"); err != nil {
+					cs.log.Error("could not save error",
+						utils.KeyAsynqTypeTask.String(), t.Type(),
+						utils.KeyLogError.String(), err.Error(),
+						utils.KeyAsynqTaskID.String(), taskID,
+					)
+					return err
+				}
 			}
 			return err
 		}
 
 		retry, _ := asynq.GetRetryCount(ctx)
 		if cs.repository != nil {
-			cs.repository.UpdateInfos(ctx, txID, retry, "FINISHED")
+			if err := cs.repository.UpdateInfos(ctx, txID, retry, "FINISHED"); err != nil {
+				cs.log.Error("could not save finished",
+					utils.KeyAsynqTypeTask.String(), t.Type(),
+					utils.KeyLogError.String(), err.Error(),
+					utils.KeyAsynqTaskID.String(), taskID,
+				)
+				return err
+			}
 		}
 
-		log.Printf("Finished processing %q: Elapsed Time = %v", t.Type(), time.Since(start))
+		cs.log.Info("Finished processing: ",
+			utils.KeyAsynqTaskID.String(), taskID,
+			utils.KeyAsynqTypeTask.String(), t.Type(),
+			utils.KeyAsynqElapsed.String(), time.Since(start),
+		)
 		return nil
 	})
 }

@@ -19,6 +19,7 @@ type SagaPattern struct {
 
 	repository types.Repository
 	pb         types.Producer
+	log        types.Logger
 }
 
 func NewSagaPattern(rdAddr string, repo types.Repository, consumers []types.ConsumerInput, options types.Opts, sequencePayloads bool) *SagaPattern {
@@ -30,6 +31,7 @@ func NewSagaPattern(rdAddr string, repo types.Repository, consumers []types.Cons
 		SequencePayloads: sequencePayloads,
 		repository:       repo,
 		pb:               pb,
+		log:              utils.NewLogger("[*] - [SagaPattern] - "),
 	}
 }
 
@@ -65,16 +67,19 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 		payload.EventID = eventID
 		if err := sp.executeUpFn(ctx, c.UpFn, payload, sp.Options, 0); err != nil {
 			if sp.repository != nil {
-				sp.repository.SagaUpdateInfos(ctx, payload.EventID, sp.Options.MaxRetry, "COMMITED_ERROR")
+				if err := sp.repository.SagaUpdateInfos(ctx, payload.EventID, sp.Options.MaxRetry, "COMMITED_ERROR"); err != nil {
+					sp.log.Error("could not save commited_error", utils.KeyLogError.String(), err.Error())
+				}
 			}
-			fmt.Printf("could not execute upFn with error: %v\n", err)
+
+			sp.log.Error("could not execute upFn with error", utils.KeyLogError.String(), err.Error())
 			hasError = true
 			break
 		}
 
 		if sp.repository != nil {
 			if err := sp.repository.SagaUpdateInfos(ctx, eventID, 0, "COMMITED"); err != nil {
-				fmt.Printf("could not update infos with error: %v\n", err)
+				sp.log.Error("could not save commited info", utils.KeyLogError.String(), err.Error())
 			}
 		}
 
@@ -89,7 +94,7 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 			if err := sp.executeDownFn(ctx, rollbackConsumers[i].DownFn, payload, configs, 2); err != nil {
 				if sp.repository != nil {
 					if err := sp.repository.SagaUpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD_ERROR"); err != nil {
-						fmt.Printf("error on update info: %v\n", err)
+						sp.log.Error("could not save backward_error", utils.KeyLogError.String(), err.Error())
 					}
 				}
 				return fmt.Errorf("could not rollback with error: %v", err)
@@ -97,7 +102,7 @@ func (sp SagaPattern) Consumer(ctx context.Context, payload types.PayloadInput) 
 
 			if sp.repository != nil {
 				if err := sp.repository.SagaUpdateInfos(ctx, eventID, configs.MaxRetry, "BACKWARD"); err != nil {
-					fmt.Printf("error on update info: %v\n", err)
+					sp.log.Error("could not save backward info", utils.KeyLogError.String(), err.Error())
 				}
 			}
 		}
