@@ -2,7 +2,7 @@
 *Library to help with distributed transaction work *
 
 ### MONITORAMENTO
-![img.png](img.png)
+TODO: [ADD IMG]
 - SERVER HTTP
     - Save transactions on database
     - Dashboard to monitor transactions
