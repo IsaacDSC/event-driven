@@ -3,12 +3,9 @@ package main
 import (
 	"context"
 	"event-driven/SDK"
-	"event-driven/database"
 	"event-driven/repository"
 	"event-driven/types"
 	"fmt"
-	"log"
-
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,14 +18,13 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	db, err := database.NewConnection(connectionString)
+	repo, err := repository.NewPgAdapter(connectionString)
 	if err != nil {
-		log.Fatalf("could not connect to database: %v", err)
+		panic(err)
 	}
 
-	defer db.Close()
+	defer repo.Close()
 
-	repo := repository.New(db)
 	producer := SDK.NewProducer(rdAddr, repo, types.EmptyOpts)
 
 	defer producer.Close()

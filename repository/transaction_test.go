@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/types"
 	"fmt"
 	"os"
@@ -60,7 +61,9 @@ func TestTransaction_UpdateInfos(t *testing.T) {
 	defer db.Close()
 
 	// Initialize the Transaction repository
-	repo := New(db)
+	repo := Transaction{
+		orm: genrepo.New(db),
+	}
 
 	// Create a sample transaction
 	ctx := context.Background()
@@ -91,7 +94,9 @@ func TestTransaction_SaveTx(t *testing.T) {
 	defer db.Close()
 
 	// Initialize the Transaction repository
-	repo := New(db)
+	repo := Transaction{
+		orm: genrepo.New(db),
+	}
 
 	// Create a sample transaction
 	ctx := context.Background()
