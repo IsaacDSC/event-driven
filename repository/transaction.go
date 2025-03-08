@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"event-driven/database"
 	genrepo "event-driven/internal/sqlc/generated/repository"
 	"event-driven/types"
 	"fmt"
@@ -13,14 +14,23 @@ import (
 )
 
 type Transaction struct {
+	db  *sql.DB
 	orm *genrepo.Queries
 }
 
 // Ensure Transaction implements Repository
 var _ types.Repository = (*Transaction)(nil)
 
-func New(db *sql.DB) *Transaction {
-	return &Transaction{orm: genrepo.New(db)}
+func NewPgAdapter(connStr string) (*Transaction, error) {
+	r := new(Transaction)
+	db, err := database.NewConnection(connStr)
+	if err != nil {
+		return r, fmt.Errorf("could not connect to database: %w", err)
+	}
+
+	r.orm = genrepo.New(db)
+
+	return r, nil
 }
 
 func (t Transaction) UpdateInfos(ctx context.Context, ID uuid.UUID, retry int, status string) error {
@@ -129,4 +139,8 @@ func (t Transaction) SagaSaveTx(ctx context.Context, input types.PayloadType) er
 	}
 
 	return nil
+}
+
+func (t Transaction) Close() {
+	t.db.Close()
 }

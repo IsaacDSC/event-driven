@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	"event-driven/SDK"
-	"event-driven/database"
 	"event-driven/internal/example/checkout/domains"
 	"event-driven/repository"
 	"event-driven/types"
-	"log"
 	"time"
 )
 
@@ -17,14 +15,12 @@ const rdAddr = "localhost:6379"
 const EventCheckoutCreated = "event.checkout.created"
 
 func main() {
-	db, err := database.NewConnection(connectionString)
+	repo, err := repository.NewPgAdapter(connectionString)
 	if err != nil {
-		log.Fatalf("could not connect to database: %v", err)
+		panic(err)
 	}
 
-	defer db.Close()
-
-	repo := repository.New(db)
+	defer repo.Close()
 
 	if err := producer(repo); err != nil {
 		panic(err)
