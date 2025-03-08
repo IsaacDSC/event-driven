@@ -1,14 +1,87 @@
 # event-driven
-*Library to help with distributed transaction work *
+![img.png](docs/eventdrive-beatles.webp)
 
-### MONITORAMENTO
-TODO: [ADD IMG] 
+A robust Go library designed to simplify distributed transactions in microservices architecture. It provides:
+
+- Saga Pattern implementation with orchestrator
+- Message queue integration
+- Transaction monitoring and tracking
+- Automatic cleanup of old transactions
+- Built-in Grafana dashboards
+- Easy-to-use SDK for producers and consumers
+
+### INSTALL
+
+```shell
+go get -u github.com/IsaacDSC/event-driven
+```
+
+
+### Functionalities
+
+---
+##### EventDriven 
+| Description | Resource | Link                                                                                            |
+|------------|----------|-------------------------------------------------------------------------------------------------|
+| Examples with producer and consumer | Queue Example | [main.go](https://github.com/IsaacDSC/event-driven/blob/main/internal/example/queue/main.go)    |
+| Examples with producer and consumer | Saga Pattern Example | [folder checkout](https://github.com/IsaacDSC/event-driven/tree/main/internal/example/checkout) |
+---
+##### Monitoring
+| Description | Resource | Link |
+|------------|----------|------|
+| Default configurations | Grafana Dashboard | [dashboard.json](https://github.com/IsaacDSC/event-driven/blob/main/grafana/dashboard.json) |
+| Default configurations | Datasource | [datasources.yaml](https://github.com/IsaacDSC/event-driven/blob/main/grafana/provisioning/datasources/datasources.yaml) |
+---
+##### Repository
+| Description | Resource | Link |
+|------------|----------|------|
+| Repository to save transactions implement contract | Postgres | [transaction.go](https://github.com/IsaacDSC/event-driven/blob/main/repository/transaction.go) |
+| Schema database | Tables | [schema.sql](https://github.com/IsaacDSC/event-driven/blob/main/internal/sqlc/schema.sql) |
+| Cronjob to clean infos default 1 Month | Cronjob | [cronjob.sql](https://github.com/IsaacDSC/event-driven/blob/main/internal/sqlc/cronjob.sql) |
+--- 
+##### Others Settings 
+| Description | Resource | Link |
+|------------|----------|------|
+| Types and configs - Repository Interface | Interface | [acl.go](https://github.com/IsaacDSC/event-driven/blob/main/types/acl.go) |
+| Types and configs - Opts and Payload | Types | [payload.go](https://github.com/IsaacDSC/event-driven/blob/main/types/payload.go) |
+
+
+### Dashboard
+
+![img.png](docs/img.png)
+
 - SERVER HTTP
     - Save transactions on database
     - Dashboard to monitor transactions
     - Removed transaction every (30 Days)
 
+
+
+
 ### SAGA PATTERN - ORCHESTRATOR
+
+*Use Repository to monitoring queues*
+
+#### Init project
+```shell
+go mod init eventdrivenexample
+```
+
+```shell
+touch main.go
+```
+
+```shell
+go get -u github.com/IsaacDSC/event-driven
+```
+
+#### Create tables on pgDatabase
+- 1.1 Download this schema and running in to database
+```shell
+wget https://github.com/IsaacDSC/event-driven/blob/main/internal/sqlc/schema.sql
+```
+
+#### Create instance repository `main.go`
 
 ```go
 package main
@@ -17,25 +90,45 @@ import (
 	"context"
 	"event-driven/SDK"
 	"event-driven/internal/example/checkout/domains"
+	"event-driven/repository"
 	"event-driven/types"
 	"time"
 )
 
-const EventCheckoutCreated = "event.checkout.created"
+const connectionString = "user=root password=root dbname=event-driven sslmode=disable"
 
 func main() {
-	if err := producer(); err != nil {
+	repo, err := repository.NewPgAdapter(connectionString)
+	if err != nil {
 		panic(err)
 	}
 
-	if err := consumer(); err != nil {
-		panic(err)
-	}
-
+	defer repo.Close()
 }
+```
 
-func producer() error {
-	pd := SDK.NewProducer("http://localhost:3333", &types.Opts{
+#### Producer message example
+
+*Create file `producer.go`*
+```shell
+mkdir producer && touch producer/producer.go
+```
+
+*Add code this file `producer.go`*
+```go 
+package producer
+
+import (
+	"context"
+	"event-driven/SDK"
+	"event-driven/internal/example/checkout/domains"
+	"event-driven/repository"
+	"event-driven/types"
+	"time"
+)
+
+func producer(repo types.Repository) {
+	pd := SDK.NewProducer(rdAddr, repo, &types.Opts{
 		MaxRetry: 5,
 		DeadLine: time.Now().Add(15 * time.Minute),
 	})
@@ -64,17 +157,39 @@ func producer() error {
 		return err
 	}
 
-	return nil
 }
+```
 
-// CHECKOUT TASK EXAMPLE
-func consumer() error {
+### Consumers message example
+
+*Create file `consumer.go`*
+```shell
+mkdir consumer && touch consumer/consumer.go
+```
+
+*Add code this file `consumer.go`*
+
+```go
+package consumer
+
+import (
+	"context"
+	"event-driven/SDK"
+	"event-driven/internal/example/checkout/domains"
+	"event-driven/repository"
+	"event-driven/types"
+	"time"
+)
+
+const rdAddr = "localhost:6379"
+
+func consumer(repo types.Repository) error {
 	sgPayment := domains.NewPayment()
 	sgStock := domains.NewStock()
 	sgDelivery := domains.NewDelivery()
 	sgNotify := domains.NewNotify()
 
-	sp := SDK.NewSagaPattern([]SDK.ConsumerInput{
+	sp := SDK.NewSagaPattern(rdAddr, repo, []types.ConsumerInput{
 		sgPayment,
 		sgStock,
 		sgDelivery,
@@ -82,9 +197,8 @@ func consumer() error {
 	}, types.Opts{
 		MaxRetry: 3,
 	}, false)
-	consumer := SDK.NewConsumerServer("localhost:6379")
 
-	if err := consumer.AddHandlers(map[string]types.ConsumerFn{
+	if err := sp.WithConsumerServer(rdAddr, repo).AddHandlers(map[string]types.ConsumerFn{
 		EventCheckoutCreated: sp.Consumer,
 	}).Start(); err != nil {
 		return err
@@ -92,61 +206,10 @@ func consumer() error {
 
 	return nil
 }
-
 ```
 
+## Contributing
 
-### Event Checkout Created 
+We welcome contributions to make this library even better! Please read our [Contributing Guidelines](docs/CONTRIBUTING.md) to get started.
 
-```go   
-package domains
-
-import (
-	"context"
-	"event-driven/SDK"
-	"event-driven/internal/example/checkout/entities"
-	"event-driven/internal/example/checkout/fakegate"
-	"event-driven/types"
-	"fmt"
-)
-
-// SAGA TX scheduler Payment
-type Payment struct{}
-
-func NewPayment() *Payment {
-	return &Payment{}
-}
-
-var _ SDK.ConsumerInput = (*Payment)(nil)
-
-func (p Payment) UpFn(ctx context.Context, payload types.PayloadInput) error {
-	var input entities.Order
-	if err := payload.Parser(&input); err != nil {
-		return fmt.Errorf("could not parse payload: %v", err)
-	}
-
-	if err := fakegate.SentPayment(input.ClientEmail, input.Total); err != nil {
-		return err
-	}
-
-	fmt.Println("UpFn Payment: ", input.Products)
-
-	return nil
-}
-
-func (p Payment) DownFn(ctx context.Context, payload types.PayloadInput) error {
-	return nil
-}
-
-func (p Payment) GetConfig() types.Opts {
-	return types.Opts{
-		Delay: 3,
-	}
-}
-
-func (p Payment) GetEventName() string {
-	return "event.payment.charged"
-}
-
-
-```
+The project follows a trunk-based development model, and all contributions should be made through pull requests targeting the `main` branch.
