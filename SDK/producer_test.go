@@ -2,8 +2,8 @@ package SDK
 
 import (
 	"context"
-	"event-driven/internal/mocks"
-	"event-driven/types"
+	"github.com/IsaacDSC/event-driven/internal/mocks"
+	"github.com/IsaacDSC/event-driven/types"
 	"go.uber.org/mock/gomock"
 	"testing"
 	"time"

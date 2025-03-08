@@ -3,8 +3,8 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"event-driven/internal/utils"
-	"event-driven/types"
+	"github.com/IsaacDSC/event-driven/internal/utils"
+	"github.com/IsaacDSC/event-driven/types"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"time"

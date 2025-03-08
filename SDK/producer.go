@@ -3,10 +3,10 @@ package SDK
 import (
 	"context"
 	"encoding/json"
-	"event-driven/internal/broker"
-	"event-driven/internal/utils"
-	"event-driven/types"
 	"fmt"
+	"github.com/IsaacDSC/event-driven/internal/broker"
+	"github.com/IsaacDSC/event-driven/internal/utils"
+	"github.com/IsaacDSC/event-driven/types"
 )
 
 type Producer struct {

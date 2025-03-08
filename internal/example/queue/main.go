@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"event-driven/SDK"
-	"event-driven/repository"
-	"event-driven/types"
 	"fmt"
+	"github.com/IsaacDSC/event-driven/SDK"
+	"github.com/IsaacDSC/event-driven/repository"
+	"github.com/IsaacDSC/event-driven/types"
 	"os"
 	"os/signal"
 	"syscall"

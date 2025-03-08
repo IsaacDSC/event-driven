@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"event-driven/SDK"
-	"event-driven/internal/example/checkout/domains"
-	"event-driven/repository"
-	"event-driven/types"
+	"github.com/IsaacDSC/event-driven/SDK"
+	"github.com/IsaacDSC/event-driven/internal/example/checkout/domains"
+	"github.com/IsaacDSC/event-driven/repository"
+	"github.com/IsaacDSC/event-driven/types"
 	"time"
 )
 

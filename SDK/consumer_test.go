@@ -2,9 +2,9 @@ package SDK
 
 import (
 	"context"
-	"event-driven/internal/mocks"
-	"event-driven/types"
 	"fmt"
+	"github.com/IsaacDSC/event-driven/internal/mocks"
+	"github.com/IsaacDSC/event-driven/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"

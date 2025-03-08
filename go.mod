@@ -1,4 +1,4 @@
-module event-driven
+module github.com/IsaacDSC/event-driven
 
 go 1.23.2
 

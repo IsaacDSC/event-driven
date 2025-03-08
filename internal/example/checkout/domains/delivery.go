@@ -2,10 +2,10 @@ package domains
 
 import (
 	"context"
-	"event-driven/internal/example/checkout/entities"
-	"event-driven/internal/example/checkout/fakegate"
-	"event-driven/types"
 	"fmt"
+	"github.com/IsaacDSC/event-driven/internal/example/checkout/entities"
+	"github.com/IsaacDSC/event-driven/internal/example/checkout/fakegate"
+	"github.com/IsaacDSC/event-driven/types"
 )
 
 // SAGA TX scheduler Delivery
