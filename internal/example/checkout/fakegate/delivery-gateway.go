@@ -1,8 +1,8 @@
 package fakegate
 
 import (
-	"event-driven/internal/example/checkout/entities"
 	"fmt"
+	"github.com/IsaacDSC/event-driven/internal/example/checkout/entities"
 	"math/rand"
 	"time"
 )

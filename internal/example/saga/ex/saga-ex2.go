@@ -3,8 +3,8 @@ package ex
 import (
 	"context"
 	"errors"
-	"event-driven/types"
 	"fmt"
+	"github.com/IsaacDSC/event-driven/types"
 )
 
 type SagaExample2 struct{}

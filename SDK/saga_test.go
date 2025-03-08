@@ -2,10 +2,10 @@ package SDK
 
 import (
 	"context"
-	"event-driven/internal/mocks"
-	"event-driven/internal/utils"
-	"event-driven/types"
 	"fmt"
+	"github.com/IsaacDSC/event-driven/internal/mocks"
+	"github.com/IsaacDSC/event-driven/internal/utils"
+	"github.com/IsaacDSC/event-driven/types"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"

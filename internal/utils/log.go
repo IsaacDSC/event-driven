@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"event-driven/types"
+	"github.com/IsaacDSC/event-driven/types"
 	"log/slog"
 	"os"
 )

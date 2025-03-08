@@ -11,7 +11,7 @@ package mocks
 
 import (
 	context "context"
-	types "event-driven/types"
+	types "github.com/IsaacDSC/event-driven/types"
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"

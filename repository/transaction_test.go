@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
-	genrepo "event-driven/internal/sqlc/generated/repository"
-	"event-driven/types"
 	"fmt"
+	genrepo "github.com/IsaacDSC/event-driven/internal/sqlc/generated/repository"
+	"github.com/IsaacDSC/event-driven/types"
 	"os"
 	"testing"
 	"time"
